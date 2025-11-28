@@ -7,7 +7,7 @@ En este proyecto se implementara la arquitectura desde 0 utilizando el dataset C
 
 
 
-#   Informacion del dataset  y preprocesamiento
+#   Informacion del dataset
 
 Para descargar el dataset, se accedio a la ![pagina oficial de coco](https://cocodataset.org/#download) y se descargaron los siguientes archivos:
 
@@ -50,6 +50,12 @@ class YOLODataset(Dataset):
     def __len__(self):
         return len(self.X)
 ```
+
+# Normalizacion y estandarizacion
+
+Despues de investigar, revisamos que en YOLO no suelen estandarizarse las imagenes, sin embargo, si se suelen normalizar, trabajo que ya hace `transforms.ToTensor()`
+
+# Revision de targets
 
 #   Entrenamiento
 
