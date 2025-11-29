@@ -202,7 +202,6 @@ Logrando este tipo de resultados:
 
 ![Imagen 2](./images/image2.png)
 ![Imagen 3](./images/image3.png)
-![Imagen 4](./images/image4.png)
 
 
 # Entendiendo el formato de los targets
