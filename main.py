@@ -2,6 +2,7 @@ from pycocotools.coco import COCO
 from utils.YOLODataset import YOLODataset
 from utils.load_images_paths import load_images_paths
 from utils.MACROS import TRAIN_ANN_FILE
+from utils.render_yolo_image import render_yolo_image
 
 
 
@@ -12,4 +13,6 @@ if __name__ == "__main__":
 
     train_dataset = YOLODataset(X_train_paths, Y_train_wrapper)
 
-    print(train_dataset.__getitem__(5))
+    p = train_dataset.__getitem__(6574)
+    print(p)
+    render_yolo_image(*p)
