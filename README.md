@@ -55,8 +55,10 @@ Distribucion de ejemplos dispuestos:
 
 ```
 Cantidad de elementos de train: 118287
-Cantidad de elementos de val:   5000
+Cantidad de elementos de val: 5000
 ```
+
+
 
 # Normalizacion y estandarizacion
 
@@ -160,8 +162,6 @@ Teniendo en cuenta la siguiente lista de labels:
 
 
 import torch
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 from torchvision import transforms
 
 def render_yolo_image(image_tensor, target):
@@ -209,6 +209,121 @@ Logrando este tipo de resultados:
 
 ![Imagen 2](./images/image2.png)
 ![Imagen 3](./images/image3.png)
+
+# Distribucion de apariciones de clases
+
+Utilizando la siguiente funcion:
+
+
+```python
+
+# utils/utils.py
+
+def get_dataset_classes_count(paths, target_wrapper):
+    """
+        Dado una lista de paths de imagenes
+        muestra informacion acerca de la distribucion
+        de sus targets
+    """
+    # esta version de coco contiene 90 clases
+    train_class_dist = [0 for i in range(91)]
+    for path in paths:
+        image_ann = get_image_target(get_image_id(path), target_wrapper)
+        for bbox in image_ann:
+            cat = int(bbox["category_id"])
+            train_class_dist[cat] +=1
+    return train_class_dist
+
+
+```
+
+```python
+
+# utils/utils.py
+
+def plot_class_distribution(class_counts, class_names=None, title="Distribución de Clases"):
+    """
+    class_counts : list o np.array
+        Conteo de apariciones por clase (indexado por class_id).
+    
+    class_names : list o None
+        Nombres de las clases en el mismo orden que class_counts.
+        Si es None, se usan los índices como etiquetas.
+    
+    title : str
+        Título del gráfico.
+    """
+
+    class_counts = np.array(class_counts)
+
+    # Filtrar solo clases con apariciones > 0
+    valid_idx = np.where(class_counts > 0)[0]
+    valid_counts = class_counts[valid_idx]
+
+    if class_names is not None:
+        valid_labels = [class_names[i] for i in valid_idx]
+    else:
+        valid_labels = [str(i) for i in valid_idx]
+
+    plt.figure(figsize=(14, 6))
+    plt.bar(valid_labels, valid_counts)
+    plt.title(title)
+    plt.xlabel("Clase")
+    plt.ylabel("Número de instancias")
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    plt.show()
+
+```
+
+```
+# main.py
+
+import enum
+from matplotlib.pyplot import plot
+from pycocotools.coco import COCO
+from utils.utils import load_images_paths
+from utils.MACROS import COCO_CLASSES_ES, TRAIN_ANN_FILE, VAL_ANN_FILE
+from utils.utils import get_dataset_classes_count
+from utils.utils import plot_class_distribution
+from utils.utils import render_yolo_image
+from utils.YOLODataset import YOLODataset
+
+
+
+if __name__ == "__main__":
+
+    Y_train_wrapper = COCO(TRAIN_ANN_FILE)
+    X_train_paths = load_images_paths("./dataset/train2017/train2017/")
+    train_dataset = YOLODataset(X_train_paths, Y_train_wrapper)
+
+    Y_val_wrapper = COCO(VAL_ANN_FILE)
+    X_val_paths = load_images_paths("./dataset/val2017/val2017/")
+
+    
+    train_classes_count = get_dataset_classes_count(X_train_paths, Y_train_wrapper)
+    non_app = [x for x,y in enumerate(train_classes_count) if x!=0 and y == 0]
+    print(f"Las clases que no aparecen en train son : {non_app}")
+    plot_class_distribution(train_classes_count,COCO_CLASSES_ES, "Distribucion de train")
+
+
+    val_classes_count = get_dataset_classes_count(X_val_paths, Y_val_wrapper)
+    non_app = [x for x,y in enumerate(val_classes_count) if x!=0 and y == 0]
+    print(f"Las clases que no aparecen en val son : {non_app}")
+    plot_class_distribution(val_classes_count, COCO_CLASSES_ES, "Distribucion de val")
+```
+
+Se obtuvieron los siguientes resultados:
+
+![Imagen 5](./images/image4.png)
+![Imagen 6](./images/image5.png)
+
+```
+
+Las clases que no aparecen en train son : [12, 26, 29, 30, 45, 66, 68, 69, 71, 83]
+Las clases que no aparecen en val son   : [12, 26, 29, 30, 45, 66, 68, 69, 71, 83]
+
+```
 
 
 # Entendiendo el formato de los targets
