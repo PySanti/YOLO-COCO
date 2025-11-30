@@ -276,7 +276,7 @@ def plot_class_distribution(class_counts, class_names=None, title="Distribución
 
 ```
 
-```
+```python
 # main.py
 
 import enum
