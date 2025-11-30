@@ -16,7 +16,7 @@ class YOLODataset(Dataset):
         """
         image_path = self.X[idx]
         image_id = int(image_path.split('/')[-1].split('.')[0])
-        image = Image.open(self.X[idx]).convert('RGB')
+        image = Image.open(self.X[idx]).convert('RGB') 
         image_tensor = transforms.ToTensor()(image)
         image.close()
 

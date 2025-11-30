@@ -51,6 +51,13 @@ class YOLODataset(Dataset):
         return len(self.X)
 ```
 
+Distribucion de ejemplos dispuestos:
+
+```
+Cantidad de elementos de train: 118287
+Cantidad de elementos de val:   5000
+```
+
 # Normalizacion y estandarizacion
 
 Despues de investigar, revisamos que en YOLO no suelen estandarizarse las imagenes, sin embargo, si se suelen normalizar, trabajo que ya hace `transforms.ToTensor()`
@@ -262,6 +269,8 @@ def get_image_target(image_id, target_wrapper):
 
 
 ```
+
+
 
 #   Entrenamiento
 
