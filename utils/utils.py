@@ -6,8 +6,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 from utils.MACROS import ANNOTATIONS_REQUIRED
 import os
+import numpy as np
 
-
+def generate_anchors(scales, ratios):
+    """Generates anchor boxes for given scales and aspect ratios."""
+    anchors = []
+    for scale in scales:
+        for ratio in ratios:
+            width = scale * np.sqrt(ratio)
+            height = scale / np.sqrt(ratio)
+            anchors.append((width, height))
+    return np.array(anchors)
 
 def get_dataset_classes_count(paths, target_wrapper):
     """
