@@ -8,15 +8,21 @@ from utils.YOLODataset import YOLODataset
 from torch import optim
 from utils.yolo_loss import yolo_loss
 from torch.utils.data import DataLoader
+from torchvision.transforms import transforms
+
 
 
 DEVICE  = "cuda" if torch.cuda.is_available() else "cpu"
 
 if __name__ == "__main__":
+    transformer = transforms.Compose([
+        transforms.Resize((640, 640)),
+        transforms.ToTensor()
+    ])
 
     Y_train_wrapper = COCO(TRAIN_ANN_FILE)
     X_train_paths = load_images_paths("./dataset/train2017/")
-    train_dataset = YOLODataset(X_train_paths, Y_train_wrapper)
+    train_dataset = YOLODataset(X_train_paths, Y_train_wrapper, transformer)
 
     #Y_val_wrapper = COCO(VAL_ANN_FILE)
     #X_val_paths = load_images_paths("./dataset/val2017/val2017/")
@@ -25,9 +31,10 @@ if __name__ == "__main__":
             dataset=train_dataset, 
             batch_size=64,
             shuffle=True,
-            num_workers=8,
-            pin_memory=True,
-            persistent_workers=True)
+        #            num_workers=8,
+        #    pin_memory=True,
+        #   persistent_workers=True
+    )
 
     model = YOLO(grid_size=7, num_classes=90, num_anchors=3).to(DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
