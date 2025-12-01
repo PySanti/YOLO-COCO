@@ -15,7 +15,7 @@ DEVICE  = "cuda" if torch.cuda.is_available() else "cpu"
 if __name__ == "__main__":
 
     Y_train_wrapper = COCO(TRAIN_ANN_FILE)
-    X_train_paths = load_images_paths("./dataset/train2017/train2017/")
+    X_train_paths = load_images_paths("./dataset/train2017/")
     train_dataset = YOLODataset(X_train_paths, Y_train_wrapper)
 
     #Y_val_wrapper = COCO(VAL_ANN_FILE)
