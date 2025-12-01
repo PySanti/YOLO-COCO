@@ -387,7 +387,15 @@ def get_image_target(image_id, target_wrapper):
 
 
 
-#   Entrenamiento
+#   Arquitectura
+
+En este ejercicio se compararan las siguientes arquitecturas.
+
+| Versión           | Rol en tu estudio                        |
+| ----------------- | ---------------------------------------- |
+| **YOLOv3**        | YOLO clásico, referencia teórica         |
+| **YOLOv5**        | YOLO moderno con anchors, uso industrial |
+| **YOLOv8 (o v9)** | YOLO de última generación, anchor-free   |
 
 #   Evaluacion
 
