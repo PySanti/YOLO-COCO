@@ -5,8 +5,11 @@ from utils.utils import load_images_paths
 from utils.MACROS import COCO_CLASSES_ES, TRAIN_ANN_FILE, VAL_ANN_FILE
 from utils.utils import get_dataset_classes_count
 from utils.utils import plot_class_distribution
-from utils.utils import render_yolo_image
+from utils.YOLO import YOLO
 from utils.YOLODataset import YOLODataset
+from torch import optim
+from utils.yolo_loss import yolo_loss
+from torch.utils.data import DataLoader
 
 
 
@@ -19,14 +22,39 @@ if __name__ == "__main__":
     Y_val_wrapper = COCO(VAL_ANN_FILE)
     X_val_paths = load_images_paths("./dataset/val2017/val2017/")
 
-    
-    train_classes_count = get_dataset_classes_count(X_train_paths, Y_train_wrapper)
-    non_app = [x for x,y in enumerate(train_classes_count) if x!=0 and y == 0]
-    print(f"Las clases que no aparecen en train son : {non_app}")
-    plot_class_distribution(train_classes_count,COCO_CLASSES_ES, "Distribucion de train")
+    TRAIN_LOADER = DataLoader(
+            dataset=train_dataset, 
+            batch_size=64,
+            shuffle=True,
+            num_workers=8,
+            pin_memory=True,
+            persistent_workers=True)
 
+    model = YOLO(grid_size=7, num_classes=90, num_anchors=3).to("cuda")
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    criterion = yolo_loss  # Your loss function from earlier
 
-    val_classes_count = get_dataset_classes_count(X_val_paths, Y_val_wrapper)
-    non_app = [x for x,y in enumerate(val_classes_count) if x!=0 and y == 0]
-    print(f"Las clases que no aparecen en val son : {non_app}")
-    plot_class_distribution(val_classes_count, COCO_CLASSES_ES, "Distribucion de val")
+    # Training loop
+    num_epochs = 20
+    for epoch in range(num_epochs):
+        model.train()
+        epoch_loss = 0
+
+        for images, targets in TRAIN_LOADER:
+            images = images.to('cuda')  # Move to GPU if available
+            targets = targets.to('cuda')
+
+            # Forward pass
+            predictions = model(images)
+
+            # Loss calculation
+            loss = criterion(predictions, targets, num_classes=90)
+            
+            # Backpropagation
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            epoch_loss += loss.item()
+
+        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss:.4f}")
