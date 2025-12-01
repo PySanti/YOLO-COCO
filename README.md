@@ -58,7 +58,35 @@ Cantidad de elementos de train: 118287
 Cantidad de elementos de val: 5000
 ```
 
+# Resolucion de las imagenes
 
+Utilizando el siguiente codigo:
+
+```python
+    w = []
+    h = []
+    for p in listdir("./dataset/train2017/"):
+        complete_path = "./dataset/train2017/" + p
+        image = Image.open(complete_path)
+        w.append(image.size[0])
+        h.append(image.size[1])
+    for p in listdir("./dataset/val2017/"):
+        complete_path = "./dataset/val2017/" + p
+        image = Image.open(complete_path)
+        w.append(image.size[0])
+        h.append(image.size[1])
+    print(min(w), max(w))
+    print(min(h), max(h))
+```
+
+Se obtuvo el siguiente resultado:
+
+```
+Ancho minimo : 59
+Ancho maximo : 640
+Altura minima : 51 
+Altura maxima : 640
+```
 
 # Normalizacion y estandarizacion
 
