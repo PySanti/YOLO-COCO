@@ -1,4 +1,5 @@
 from torch.utils.data import Dataset
+from utils.encode_yolo_targets import encode_yolo_target
 from utils.utils import get_image_id
 from torchvision import transforms
 from PIL import Image
@@ -20,7 +21,7 @@ class YOLODataset(Dataset):
         image_tensor = self.transformer(image)
         image.close()
         image_annotation = get_image_target(get_image_id(self.X[idx]), self.Y)
-        return image_tensor, image_annotation
+        return image_tensor, encode_yolo_target(image_annotation, 640, 640, 80, 90)
 
     def __len__(self):
         return len(self.X)
