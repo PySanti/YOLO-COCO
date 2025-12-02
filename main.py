@@ -37,7 +37,7 @@ if __name__ == "__main__":
         #   persistent_workers=True
     )
 
-    model = YOLO(grid_size=7, num_classes=90, num_anchors=3).to(DEVICE)
+    model = YOLO(grid_size=7, num_classes=90, num_anchors=1).to(DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     criterion = yolo_loss  # Your loss function from earlier
 
