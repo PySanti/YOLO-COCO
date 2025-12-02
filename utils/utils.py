@@ -7,6 +7,63 @@ import numpy as np
 from utils.MACROS import ANNOTATIONS_REQUIRED
 import os
 import numpy as np
+import torch
+import numpy as np
+import matplotlib.pyplot as plt
+
+def plot_3d_tensor(tensor_3d: torch.Tensor, threshold: float = 0.5):
+    """
+    Renderiza un tensor 3D de PyTorch como una nube de puntos 3D.
+
+    Args:
+        tensor_3d (torch.Tensor): El tensor de entrada 3D (ej. D x H x W).
+        threshold (float): Umbral para seleccionar los puntos a visualizar.
+    """
+    if tensor_3d.dim() != 3:
+        raise ValueError(f"El tensor debe ser 3D, pero tiene {tensor_3d.dim()} dimensiones.")
+
+    # 1. Convertir a NumPy y buscar índices de puntos de interés
+    # Se seleccionan los elementos del tensor cuyo valor es mayor que el umbral.
+    data_np = tensor_3d.detach().cpu().numpy()
+    
+    # Obtener las coordenadas (índices) donde el valor es > threshold
+    coords = np.argwhere(data_np > threshold)
+    
+    if coords.size == 0:
+        print("No se encontraron puntos por encima del umbral especificado.")
+        return
+
+    # Extraer las coordenadas D, H, W
+    z_coords = coords[:, 0]
+    y_coords = coords[:, 1]
+    x_coords = coords[:, 2]
+    
+    # 2. Obtener los valores (para usar como color, si se desea)
+    # Se obtienen los valores reales en las coordenadas seleccionadas
+    values = data_np[z_coords, y_coords, x_coords]
+
+    # 3. Crear el gráfico 3D
+    fig = plt.figure(figsize=(10, 8))
+    # Usamos la proyección 3D
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # 4. Graficar la nube de puntos
+    # c=values asigna un color a cada punto basado en su valor en el tensor.
+    scatter = ax.scatter(x_coords, y_coords, z_coords, c=values, cmap='viridis', marker='o')
+
+    # Configuración de etiquetas y título
+    ax.set_xlabel("Eje X (W)")
+    ax.set_ylabel("Eje Y (H)")
+    ax.set_zlabel("Eje Z (D)")
+    ax.set_title("Renderizado 3D del Tensor de PyTorch")
+
+    # Agregar barra de color para referencia
+    fig.colorbar(scatter, ax=ax, shrink=0.6, aspect=10, label='Valor del Tensor')
+    
+    # 
+
+    plt.show()
+
 
 def generate_anchors(scales, ratios):
     """Generates anchor boxes for given scales and aspect ratios."""
@@ -123,3 +180,4 @@ def plot_class_distribution(class_counts, class_names=None, title="Distribución
 
 def load_images_paths(folder : str):
     return [path.join(folder,i) for i in listdir(folder)]
+

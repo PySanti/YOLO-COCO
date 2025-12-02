@@ -1,7 +1,7 @@
 import enum
 from pycocotools.coco import COCO
 import torch
-from utils.utils import load_images_paths
+from utils.utils import load_images_paths, plot_3d_tensor
 from utils.MACROS import TRAIN_ANN_FILE, VAL_ANN_FILE
 from utils.YOLO import YOLO
 from utils.YOLODataset import YOLODataset
@@ -23,6 +23,7 @@ if __name__ == "__main__":
     Y_train_wrapper = COCO(TRAIN_ANN_FILE)
     X_train_paths = load_images_paths("./dataset/train2017/")
     train_dataset = YOLODataset(X_train_paths, Y_train_wrapper, transformer)
+
 
     #Y_val_wrapper = COCO(VAL_ANN_FILE)
     #X_val_paths = load_images_paths("./dataset/val2017/val2017/")
