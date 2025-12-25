@@ -1,6 +1,6 @@
 import torch
 
-def yolo_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=0.5):
+def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=0.5):
     """
     Computes YOLO loss.
     - predictions: Predicted tensor.
@@ -15,6 +15,7 @@ def yolo_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=0.
     target_classes = targets[..., 5:]
     
     # Localization Loss
+
     box_loss = lambda_coord * torch.sum((pred_boxes - target_boxes) ** 2)
 
     # Confidence Loss

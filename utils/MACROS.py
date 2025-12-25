@@ -1,5 +1,9 @@
 TRAIN_ANN_FILE = "./dataset/annotations_trainval2017/annotations/instances_train2017.json"
 VAL_ANN_FILE = "./dataset/annotations_trainval2017/annotations/instances_val2017.json"
+IMG_SIZE = (240,240)
+GRID_SIZE = 7
+BATCH_SIZE = 128
+NUM_CLASSES = 90
 ANNOTATIONS_REQUIRED = [
         "bbox",
         "category_id",
@@ -89,3 +93,5 @@ COCO_CLASSES_ES = {
     89: "secador de pelo",
     90: "cepillo de dientes"
 }
+
+

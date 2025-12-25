@@ -25,28 +25,30 @@ Se creo la clase `YOLODataset` para wrappear el dataset.
 ```python
 
 from torch.utils.data import Dataset
-from torchvision import transforms
+from utils.encode_yolo_targets import encode_yolo_target
+from utils.utils import get_image_id
 from PIL import Image
-from utils.get_image_target import get_image_target
+from utils.utils import get_image_target
+from utils.MACROS import *
 
 class YOLODataset(Dataset):
-    def __init__(self, X, Y) -> None:
+    def __init__(self, X, Y, transformer) -> None:
         super().__init__()
         self.X = X # paths list
         self.Y = Y # target wrapper
+        self.transformer = transformer
 
     def __getitem__(self, idx) :
         """
             Recordar que las imagenes tienen unos ids (que se encuentra en su nombre)
             Mientras que los targets tienen otro id
         """
-        image_path = self.X[idx]
-        image_id = int(image_path.split('/')[-1].split('.')[0])
-        image = Image.open(self.X[idx]).convert('RGB')
-        image_tensor = transforms.ToTensor()(image)
+        image = Image.open(self.X[idx]).convert('RGB') 
+        image_tensor = self.transformer(image)
         image.close()
+        image_annotation = get_image_target(get_image_id(self.X[idx]), self.Y)
+        return image_tensor, encode_yolo_target(image_annotation, IMG_SIZE[0], IMG_SIZE[1], 80, 90)
 
-        return image_tensor, get_image_target(image_id, self.Y)
     def __len__(self):
         return len(self.X)
 ```
@@ -421,9 +423,41 @@ En este ejercicio se compararan las siguientes arquitecturas.
 
 | Versión           | Rol en tu estudio                        |
 | ----------------- | ---------------------------------------- |
+| **YOLOv1**        | El comienzo de todo                      |
 | **YOLOv3**        | YOLO clásico, referencia teórica         |
 | **YOLOv5**        | YOLO moderno con anchors, uso industrial |
 | **YOLOv8 (o v9)** | YOLO de última generación, anchor-free   |
+
+## YOLO v1
+
+La primera version de YOLO se caracteriza por:
+
+1. Los targets solo tienen una box como maximo (cada celda solo puede ser responsable de un objeto)
+2. El modelo produce dos bbox.
+3. De las dos bbox solo uno sera responsable de predecir el objeto de la celda.
+4. NMS en inferencia.
+5. La confianza sigue la siguiente formula:
+
+![Imagen formula](./images/confidence formula.png)
+
+6. Parámetros de la caja: (x,y) relativos a la celda; (w,h) relativos a la imagen
+7. Función de pérdida con pesos distintos
+
+La loss de YOLOv1 combina:
+
+* error de localización
+
+* error de confianza (objeto vs no objeto)
+
+* error de clasificación
+
+* sqrt(w), sqrt(h) en la loss para que errores en cajas grandes no dominen tanto y para estabilizar.
+
+8. Clasificación por celda: una sola distribución de clases por celda
+
+En YOLOv1 las clases son por celda, no por bbox.
+Es decir, la celda produce la probabilidad por clase una vez, y luego se combina con la confianza de cada bbox.
+Esto es una limitación típica cuando hay objetos distintos muy cerca o en la misma celda.
 
 #   Evaluacion
 
