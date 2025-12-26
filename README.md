@@ -435,7 +435,7 @@ La primera version de YOLO se caracteriza por:
 4. NMS en inferencia.
 5. La confianza sigue la siguiente formula:
 
-![Imagen formula]("./images/confidence formula.png")
+![Imagen formula](./images/confidence_formula.png)
 
 
 6. Parámetros de la caja: (x,y) relativos a la celda; (w,h) relativos a la imagen
