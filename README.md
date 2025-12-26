@@ -9,7 +9,8 @@ En este proyecto se implementara la arquitectura desde 0 utilizando el dataset C
 
 #   Informacion del dataset
 
-Para descargar el dataset, se accedio a la ![pagina oficial de coco](https://cocodataset.org/#download) y se descargaron los siguientes archivos:
+Para descargar el dataset, se accedio a la [pagina oficial de coco](https://cocodataset.org/#download) y se descargaron los siguientes archivos:
+
 
 ![Imagen 1](./images/image1.png)
 
@@ -460,7 +461,7 @@ Esto es una limitación típica cuando hay objetos distintos muy cerca o en la m
 
 ## YOLO v1 : produccion de targets.
 
-Utilizando la siguiente funcion, logramos producir un tensor a partir de las annotations de las imagenes. Este tensor tendra solo una box por celda, como asi lo indica el ![paper](https://pjreddie.com/static/papers/yolo_1.pdf) de YOLO v1:
+Utilizando la siguiente funcion, logramos producir un tensor a partir de las annotations de las imagenes. Este tensor tendra solo una box por celda, como asi lo indica el [paper](https://pjreddie.com/static/papers/yolo_1.pdf) de YOLO v1:
 
 ```python
 
