@@ -36,7 +36,7 @@ class YOLOv1(nn.Module):
     def __init__(self):
         super(YOLOv1, self).__init__()
         self.backbone = YOLOV1Backbone()
-        self.head = YOLOV1Head(GRID_SIZE, NUM_CLASSES, 1)
+        self.head = YOLOV1Head(GRID_SIZE, NUM_CLASSES, 2)
 
     def forward(self, x):
         features = self.backbone(x)

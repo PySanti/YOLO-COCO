@@ -11,6 +11,8 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
+from colorama import Fore
+
 def plot_3d_tensor(tensor_3d: torch.Tensor, threshold: float = 0.5):
     """
     Renderiza un tensor 3D de PyTorch como una nube de puntos 3D.
@@ -181,3 +183,6 @@ def plot_class_distribution(class_counts, class_names=None, title="Distribución
 def load_images_paths(folder : str):
     return [path.join(folder,i) for i in listdir(folder)]
 
+
+def warning(string):
+    print(Fore.YELLOW + string + Fore.RESET)

@@ -12,6 +12,7 @@ from utils.utils import load_images_paths
 
 DEVICE  = "cuda" if torch.cuda.is_available() else "cpu"
 
+
 if __name__ == "__main__":
     transformer = transforms.Compose([
         transforms.Resize(IMG_SIZE),
@@ -42,11 +43,17 @@ if __name__ == "__main__":
 
     print("Empezando entrenamiento")
     num_epochs = 20
+
+
+
     for epoch in range(num_epochs):
         model.train()
         epoch_loss = 0
 
-        for i, (images, targets) in enumerate(TRAIN_LOADER):
+        print("-------------")
+
+        for i, (images, targets, ignored_boxes) in enumerate(TRAIN_LOADER):
+            print("\r", end="")
             t1 = time.time()
             images = images.to(DEVICE)  # Move to GPU if available
             targets = targets.to(DEVICE)
@@ -63,7 +70,7 @@ if __name__ == "__main__":
             optimizer.step()
 
             epoch_loss += loss.item()
-            print(f"({i}/{len(train_dataset)//BATCH_SIZE}) - tiempo de procesamiento de batch : {time.time()-t1}", end="\r")
 
-        print("\n\n")
+            print(f"({i}/{len(TRAIN_LOADER)}) - {(time.time()-t1)*(len(TRAIN_LOADER)-i-1):.1f} --- {sum(ignored_boxes)/BATCH_SIZE:.2f} IB", end="")
+        print("\n")
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss/(len(train_dataset)//BATCH_SIZE):.4f}")

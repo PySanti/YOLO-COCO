@@ -1,5 +1,5 @@
 from torch.utils.data import Dataset
-from utils.encode_yolo_targets import encode_yolo_target
+from utils.encode_yolo_target import encode_yolov1
 from utils.utils import get_image_id
 from PIL import Image
 from utils.utils import get_image_target
@@ -18,10 +18,12 @@ class YOLODataset(Dataset):
             Mientras que los targets tienen otro id
         """
         image = Image.open(self.X[idx]).convert('RGB') 
+        prev_size = image.size
         image_tensor = self.transformer(image)
         image.close()
         image_annotation = get_image_target(get_image_id(self.X[idx]), self.Y)
-        return image_tensor, encode_yolo_target(image_annotation, IMG_SIZE[0], IMG_SIZE[1], GRID_SIZE, NUM_CLASSES)
+        encoded_target, ignored_boxes = encode_yolov1(prev_size, image_annotation, IMG_SIZE, GRID_SIZE, NUM_CLASSES)
+        return image_tensor, encoded_target, ignored_boxes
 
     def __len__(self):
         return len(self.X)

@@ -431,7 +431,7 @@ La primera version de YOLO se caracteriza por:
 
 1. Los targets solo tienen una box como maximo (cada celda solo puede ser responsable de un objeto). Si dos objetos coinciden en la misma celda, nos quedamos con el mas grande.
 2. El modelo produce dos bbox.
-3. De las dos bbox solo uno sera responsable de predecir el objeto de la celda.
+3. De las dos bbox solo uno sera responsable de predecir el objeto de la celda, la que mayor IoU tenga.
 4. NMS en inferencia.
 5. La confianza sigue la siguiente formula:
 
@@ -460,12 +460,21 @@ Esto es una limitación típica cuando hay objetos distintos muy cerca o en la m
 
 ## YOLO v1 : produccion de targets.
 
-Utilizando la siguiente funcion, logramos producir un tensor a partir de las annotations de las imagenes:
+Utilizando la siguiente funcion, logramos producir un tensor a partir de las annotations de las imagenes. Este tensor tendra solo una box por celda, como asi lo indica el ![paper](https://pjreddie.com/static/papers/yolo_1.pdf) de YOLO v1:
 
 ```python
 
+from utils.utils import warning
+import torch
 
-def encode_yolo_target(annotations, image_width, image_height, grid_size, num_classes):
+
+def encode_yolov1(
+    previus_img_size,
+    annotations,
+    img_size,
+    grid_size,
+    num_classes,
+):
     """
     Convierte anotaciones COCO de UNA imagen a un tensor target tipo YOLO.
 
@@ -493,6 +502,11 @@ def encode_yolo_target(annotations, image_width, image_height, grid_size, num_cl
             target[..., 4]   = confidence (0 o 1)
             target[..., 5:]  = one-hot de clases
     """
+    image_width = img_size[0]
+    image_height = img_size[1]
+
+    div_ratio_w = previus_img_size[0] / image_width
+    div_ratio_h = previus_img_size[1] / image_height
 
     S = grid_size
     C = num_classes
@@ -502,21 +516,27 @@ def encode_yolo_target(annotations, image_width, image_height, grid_size, num_cl
 
     cell_w = image_width / S
     cell_h = image_height / S
+    ignored = 0
 
     for ann in annotations:
         bbox = ann["bbox"]     # [x, y, w, h] en píxeles
         x, y, w, h = bbox
+        x /= div_ratio_w
+        w /= div_ratio_w
+        y /= div_ratio_h
+        h /= div_ratio_h
 
         # Centro del bbox en píxeles
         x_c = x + w / 2.0
         y_c = y + h / 2.0
 
+
         # Índice de la celda donde cae el centro
         i = int(x_c / cell_w)  # columna (eje x)
         j = int(y_c / cell_h)  # fila (eje y)
 
-        # Ignorar cajas fuera de la imagen o justo en el borde extremo
         if i < 0 or i >= S or j < 0 or j >= S:
+            ignored +=1
             continue
 
         # Coordenadas relativas a la celda (entre 0 y 1)
@@ -540,6 +560,7 @@ def encode_yolo_target(annotations, image_width, image_height, grid_size, num_cl
 
             # Si el que ya está es más grande, nos lo quedamos
             if prev_area >= new_area:
+                ignored += 1
                 continue
 
         # Guardamos bbox normalizado y confianza
@@ -554,10 +575,79 @@ def encode_yolo_target(annotations, image_width, image_height, grid_size, num_cl
         class_idx = cat_id - 1  # si tus clases van de 1 a C
 
         if 0 <= class_idx < C:
+            target[j, i, 5:] = 0.0
             target[j, i, 5 + class_idx] = 1.0
 
-    return target
+    return target, ignored
 ```
+
+Es importante destacar que en la primera version de la funcion anterior no se estaba recibiendo el parametro `previus_img_size` ni se estaban ejecutando las siguientes lineas de codigo:
+
+```python
+
+        x /= div_ratio_w
+        w /= div_ratio_w
+        y /= div_ratio_h
+        h /= div_ratio_h
+```
+
+Esto provocaba que los calculos para determinar la celda en la cual caeria cada box se vieran sesgados y erroneos, ya que no se ajustaban al nuevo size de las imagenes. Esto provcaba que la cantidad de boxes ignoradas fuera superior a ~15, con esas modificaciones esta entre 1-2, donde todas las cajas ignoradas son aquellas que caen en la misma celda.
+
+
+## YOLO v1 : produccion de predicciones.
+
+Para lograr que la red prediga tensores con el mismo formato que los targets, pero con dos anchors (para YOLO v1), se implementa el siguiente codigo:
+
+```python
+
+from torch import nn
+from utils.MACROS import *
+import torch
+import torch.nn as nn
+from utils.ConvBlock import ConvBlock
+
+
+class YOLOV1Backbone(nn.Module):
+    def __init__(self):
+        super(YOLOV1Backbone, self).__init__()
+        self.layers = nn.Sequential(
+            ConvBlock(3, 32, kernel_size=3, stride=1, padding=1),
+            nn.MaxPool2d(2, 2),
+            ConvBlock(32, 64, kernel_size=3, stride=1, padding=1),
+            nn.MaxPool2d(2, 2),
+            ConvBlock(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.AdaptiveAvgPool2d(GRID_SIZE)
+        )
+
+    def forward(self, x):
+        return self.layers(x)
+
+
+class YOLOV1Head(nn.Module):
+    def __init__(self, grid_size, num_classes, num_anchors):
+        super(YOLOV1Head, self).__init__()
+        self.grid_size = grid_size
+        self.num_classes = num_classes
+        self.num_anchors = num_anchors
+        self.detector = nn.Conv2d(128, num_anchors * (5 + num_classes), kernel_size=1)
+
+    def forward(self, x):
+        return self.detector(x).permute(0, 2, 3, 1).contiguous()
+
+class YOLOv1(nn.Module):
+    def __init__(self):
+        super(YOLOv1, self).__init__()
+        self.backbone = YOLOV1Backbone()
+        self.head = YOLOV1Head(GRID_SIZE, NUM_CLASSES, 2)
+
+    def forward(self, x):
+        features = self.backbone(x)
+        predictions = self.head(features)
+        return predictions
+
+```
+
+## YOLO v1: calculo de error.
 
 
 #   Evaluacion
