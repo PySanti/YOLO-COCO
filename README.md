@@ -435,7 +435,8 @@ La primera version de YOLO se caracteriza por:
 4. NMS en inferencia.
 5. La confianza sigue la siguiente formula:
 
-![Imagen formula](./images/confidence formula.png)
+![Imagen formula]("./images/confidence formula.png")
+
 
 6. Parámetros de la caja: (x,y) relativos a la celda; (w,h) relativos a la imagen
 7. Función de pérdida con pesos distintos
@@ -464,13 +465,7 @@ Utilizando la siguiente funcion, logramos producir un tensor a partir de las ann
 ```python
 
 
-def encode_yolo_target(
-    annotations,
-    image_width,
-    image_height,
-    grid_size,
-    num_classes,
-):
+def encode_yolo_target(annotations, image_width, image_height, grid_size, num_classes):
     """
     Convierte anotaciones COCO de UNA imagen a un tensor target tipo YOLO.
 
