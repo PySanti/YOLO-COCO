@@ -66,4 +66,4 @@ if __name__ == "__main__":
             print(f"({i}/{len(train_dataset)//BATCH_SIZE}) - tiempo de procesamiento de batch : {time.time()-t1}", end="\r")
 
         print("\n\n")
-        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss:.4f}")
+        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss/(len(train_dataset)//BATCH_SIZE):.4f}")

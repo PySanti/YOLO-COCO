@@ -21,7 +21,7 @@ class YOLODataset(Dataset):
         image_tensor = self.transformer(image)
         image.close()
         image_annotation = get_image_target(get_image_id(self.X[idx]), self.Y)
-        return image_tensor, encode_yolo_target(image_annotation, IMG_SIZE[0], IMG_SIZE[1], 30, 90)
+        return image_tensor, encode_yolo_target(image_annotation, IMG_SIZE[0], IMG_SIZE[1], GRID_SIZE, NUM_CLASSES)
 
     def __len__(self):
         return len(self.X)

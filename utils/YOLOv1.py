@@ -14,7 +14,7 @@ class YOLOV1Backbone(nn.Module):
             ConvBlock(32, 64, kernel_size=3, stride=1, padding=1),
             nn.MaxPool2d(2, 2),
             ConvBlock(64, 128, kernel_size=3, stride=1, padding=1),
-            nn.MaxPool2d(2, 2)
+            nn.AdaptiveAvgPool2d(GRID_SIZE)
         )
 
     def forward(self, x):
