@@ -1,15 +1,15 @@
 # YOLO-COCO
 
 
-El objetivo de este proyecto es poner en practica la arquitectura de red neuronal YOLO para deteccion de objetos dentro de imagenes.
+El objetivo de este proyecto es poner en práctica la arquitectura de red neuronal YOLO para detección de objetos dentro de imágenes.
 
-En este proyecto se implementara la arquitectura desde 0 utilizando el dataset COCO.
+En este proyecto se implementará la arquitectura desde 0 utilizando el dataset COCO.
 
 
 
-#   Informacion del dataset
+#   Información del dataset
 
-Para descargar el dataset, se accedio a la [pagina oficial de coco](https://cocodataset.org/#download) y se descargaron los siguientes archivos:
+Para descargar el dataset, se accedió a la [página oficial de coco](https://cocodataset.org/#download) y se descargaron los siguientes archivos:
 
 
 ![Imagen 1](./images/image1.png)
@@ -21,7 +21,7 @@ Para descargar el dataset, se accedio a la [pagina oficial de coco](https://coco
 2017 Train/Val annotations [241 MB]
 ```
 
-Se creo la clase `YOLODataset` para wrappear el dataset.
+Se creó la clase `YOLODataset` para wrappear el dataset.
 
 ```python
 
@@ -41,7 +41,7 @@ class YOLODataset(Dataset):
 
     def __getitem__(self, idx) :
         """
-            Recordar que las imagenes tienen unos ids (que se encuentra en su nombre)
+            Recordar que las imágenes tienen unos ids (que se encuentra en su nombre)
             Mientras que los targets tienen otro id
         """
         image = Image.open(self.X[idx]).convert('RGB') 
@@ -54,16 +54,16 @@ class YOLODataset(Dataset):
         return len(self.X)
 ```
 
-Distribucion de ejemplos dispuestos:
+Distribución de ejemplos dispuestos:
 
 ```
 Cantidad de elementos de train: 118287
 Cantidad de elementos de val: 5000
 ```
 
-# Resolucion de las imagenes
+# Resolución de las imágenes
 
-Utilizando el siguiente codigo:
+Utilizando el siguiente código:
 
 ```python
     w = []
@@ -85,19 +85,19 @@ Utilizando el siguiente codigo:
 Se obtuvo el siguiente resultado:
 
 ```
-Ancho minimo : 59
-Ancho maximo : 640
-Altura minima : 51 
-Altura maxima : 640
+Ancho mínimo : 59
+Ancho máximo : 640
+Altura mínima : 51 
+Altura máxima : 640
 ```
 
-# Normalizacion y estandarizacion
+# Normalización y estandarización
 
-Despues de investigar, revisamos que en YOLO no suelen estandarizarse las imagenes, sin embargo, si se suelen normalizar, trabajo que ya hace `transforms.ToTensor()`
+Después de investigar, revisamos que en YOLO no suelen estandarizarse las imágenes, sin embargo, sí se suelen normalizar, trabajo que ya hace `transforms.ToTensor()`
 
-# Revision de targets
+# Revisión de targets
 
-Despues de crear la clase `YOLODataset` ya obtuvimos acceso a generar tuplas `(image-tensor, target)` donde el target seria informacion relacionada con las bbox de las imagenes. Luego cree una funcion utilizada para, dada una imagen y dada sus annotations, renderizar la imagen + bboxes:
+Después de crear la clase `YOLODataset` ya obtuvimos acceso a generar tuplas `(image-tensor, target)` donde el target sería información relacionada con las bbox de las imágenes. Luego creé una función utilizada para, dada una imagen y dada sus annotations, renderizar la imagen + bboxes:
 
 
 Teniendo en cuenta la siguiente lista de labels:
@@ -241,9 +241,9 @@ Logrando este tipo de resultados:
 ![Imagen 2](./images/image2.png)
 ![Imagen 3](./images/image3.png)
 
-# Distribucion de apariciones de clases
+# Distribución de apariciones de clases
 
-Utilizando la siguiente funcion:
+Utilizando la siguiente función:
 
 
 ```python
@@ -252,11 +252,11 @@ Utilizando la siguiente funcion:
 
 def get_dataset_classes_count(paths, target_wrapper):
     """
-        Dado una lista de paths de imagenes
-        muestra informacion acerca de la distribucion
+        Dado una lista de paths de imágenes
+        muestra información acerca de la distribución
         de sus targets
     """
-    # esta version de coco contiene 90 clases
+    # esta versión de coco contiene 90 clases
     train_class_dist = [0 for i in range(91)]
     for path in paths:
         image_ann = get_image_target(get_image_id(path), target_wrapper)
@@ -335,13 +335,13 @@ if __name__ == "__main__":
     train_classes_count = get_dataset_classes_count(X_train_paths, Y_train_wrapper)
     non_app = [x for x,y in enumerate(train_classes_count) if x!=0 and y == 0]
     print(f"Las clases que no aparecen en train son : {non_app}")
-    plot_class_distribution(train_classes_count,COCO_CLASSES_ES, "Distribucion de train")
+    plot_class_distribution(train_classes_count,COCO_CLASSES_ES, "Distribución de train")
 
 
     val_classes_count = get_dataset_classes_count(X_val_paths, Y_val_wrapper)
     non_app = [x for x,y in enumerate(val_classes_count) if x!=0 and y == 0]
     print(f"Las clases que no aparecen en val son : {non_app}")
-    plot_class_distribution(val_classes_count, COCO_CLASSES_ES, "Distribucion de val")
+    plot_class_distribution(val_classes_count, COCO_CLASSES_ES, "Distribución de val")
 ```
 
 Se obtuvieron los siguientes resultados:
@@ -383,13 +383,13 @@ De los cuales, solo nos interesan los siguientes campos:
 }
 ```
 
-Es imporante tener en cuenta que los bbox contienen las coordenadas de las imagenes con valores absolutos a la imagen, y que llevan el siguiente formato:
+Es importante tener en cuenta que los bbox contienen las coordenadas de las imágenes con valores absolutos a la imagen, y que llevan el siguiente formato:
 
 ```
 bbox : [x_inicio, y_inicio, ancho, alto]
 ```
 
-Por ejemplo, la ultima imagen mostrada, contiene el siguiente target:
+Por ejemplo, la última imagen mostrada, contiene el siguiente target:
 
 ```
 [
@@ -399,7 +399,7 @@ Por ejemplo, la ultima imagen mostrada, contiene el siguiente target:
 ]
 ```
 
-Nota : se modifico el `get_image_target` para solo retornar los campos que requerimos ...
+Nota : se modificó el `get_image_target` para solo retornar los campos que requerimos ...
 
 ```python
 from utils.MACROS import ANNOTATIONS_REQUIRED
@@ -408,7 +408,7 @@ def get_image_target(image_id, target_wrapper):
     """
         Retorna el target de la imagen a partir de su ID
     """
-    ann_ids = target_wrapper.getAnnIds(imgIds=[image_id]) # se obtiene el id de la anotacion a partir de la imagen
+    ann_ids = target_wrapper.getAnnIds(imgIds=[image_id]) # se obtiene el id de la anotación a partir de la imagen
     annotations = target_wrapper.loadAnns(ann_ids) # se obtienen las anotaciones
     return [{x:y for x,y in a.items() if x in ANNOTATIONS_REQUIRED} for a in annotations]
 ```
@@ -417,7 +417,7 @@ def get_image_target(image_id, target_wrapper):
 
 #   Arquitectura
 
-En este ejercicio se compararan las siguientes arquitecturas.
+En este ejercicio se compararán las siguientes arquitecturas.
 
 | Versión           | Rol en tu estudio                        |
 | ----------------- | ---------------------------------------- |
@@ -428,15 +428,15 @@ En este ejercicio se compararan las siguientes arquitecturas.
 
 ## YOLO v1
 
-La primera version de YOLO se caracteriza por:
+La primera versión de YOLO se caracteriza por:
 
-1. Los targets solo tienen una box como maximo (cada celda solo puede ser responsable de un objeto). Si dos objetos coinciden en la misma celda, nos quedamos con el mas grande.
+1. Los targets solo tienen una box como máximo (cada celda solo puede ser responsable de un objeto). Si dos objetos coinciden en la misma celda, nos quedamos con el más grande.
 2. El modelo produce dos bbox.
-3. De las dos bbox solo uno sera responsable de predecir el objeto de la celda, la que mayor IoU tenga.
+3. De las dos bbox solo uno será responsable de predecir el objeto de la celda, la que mayor IoU tenga.
 4. NMS en inferencia.
-5. La confianza sigue la siguiente formula:
+5. La confianza sigue la siguiente fórmula:
 
-![Imagen formula](./images/confidence_formula.png)
+![Imagen fórmula](./images/confidence_formula.png)
 
 
 6. Parámetros de la caja: (x,y) relativos a la celda; (w,h) relativos a la imagen
@@ -459,9 +459,9 @@ Es decir, la celda produce la probabilidad por clase una vez, y luego se combina
 Esto es una limitación típica cuando hay objetos distintos muy cerca o en la misma celda.
 
 
-## YOLO v1 : produccion de targets.
+## YOLO v1 : producción de targets.
 
-Utilizando la siguiente funcion, logramos producir un tensor a partir de las annotations de las imagenes. Este tensor tendra solo una box por celda, como asi lo indica el [paper](https://pjreddie.com/static/papers/yolo_1.pdf) de YOLO v1:
+Utilizando la siguiente función, logramos producir un tensor a partir de las annotations de las imágenes. Este tensor tendra solo una box por celda, como asi lo indica el [paper](https://pjreddie.com/static/papers/yolo_1.pdf) de YOLO v1:
 
 ```python
 
@@ -582,7 +582,7 @@ def encode_yolov1(
     return target, ignored
 ```
 
-Es importante destacar que en la primera version de la funcion anterior no se estaba recibiendo el parametro `previus_img_size` ni se estaban ejecutando las siguientes lineas de codigo:
+Es importante destacar que en la primera versión de la función anterior no se estaba recibiendo el parámetro `previus_img_size` ni se estaban ejecutando las siguientes líneas de código:
 
 ```python
 
@@ -592,12 +592,12 @@ Es importante destacar que en la primera version de la funcion anterior no se es
         h /= div_ratio_h
 ```
 
-Esto provocaba que los calculos para determinar la celda en la cual caeria cada box se vieran sesgados y erroneos, ya que no se ajustaban al nuevo size de las imagenes. Esto provcaba que la cantidad de boxes ignoradas fuera superior a ~15, con esas modificaciones esta entre 1-2, donde todas las cajas ignoradas son aquellas que caen en la misma celda.
+Esto provocaba que los cálculos para determinar la celda en la cual caería cada box se vieran sesgados y erróneos, ya que no se ajustaban al nuevo size de las imágenes. Esto provocaba que la cantidad de boxes ignoradas fuera superior a ~15, con esas modificaciones está entre 1-2, donde todas las cajas ignoradas son aquellas que caen en la misma celda.
 
 
-## YOLO v1 : produccion de predicciones.
+## YOLO v1 : producción de predicciones.
 
-Para lograr que la red prediga tensores con el mismo formato que los targets, pero con dos anchors (para YOLO v1), se implementa el siguiente codigo:
+Para lograr que la red prediga tensores con el mismo formato que los targets, pero con dos anchors (para YOLO v1), se implementa el siguiente código:
 
 ```python
 
@@ -648,8 +648,8 @@ class YOLOv1(nn.Module):
 
 ```
 
-## YOLO v1: calculo de error.
+## YOLO v1: cálculo de error.
 
 
-#   Evaluacion
+#   Evaluación
 
