@@ -44,8 +44,6 @@ if __name__ == "__main__":
     print("Empezando entrenamiento")
     num_epochs = 20
 
-
-
     for epoch in range(num_epochs):
         model.train()
         epoch_loss = 0
@@ -62,7 +60,7 @@ if __name__ == "__main__":
             predictions = model(images)
 
             # Loss calculation
-            loss = criterion(predictions, targets, num_classes=90)
+            loss = criterion(predictions, targets, num_classes=NUM_CLASSES)
             
             # Backpropagation
             optimizer.zero_grad()
