@@ -176,8 +176,9 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
     best_is_2_exp = best_is_2.unsqueeze(-1)  # (B,S,S,1) para poder hacer where en tensores [...,4] o [...,C]
 
     resp_box = torch.where(best_is_2_exp, pred_box2, pred_box1)   # (b,s,s,4)
-    resp_conf = torch.where(best_is_2, pred_conf2, pred_conf1)    # (b,s,s)
+    resp_conf = torch.where(best_is_2, pred_conf2 * iou2, pred_conf1 * iou1)    # (b,s,s)
     resp_cls = torch.where(best_is_2_exp, pred_cls2, pred_cls1)   # (b,s,s,c)
+
 
     nonresp_conf = torch.where(best_is_2, pred_conf1, pred_conf2) # (B,S,S)
 
