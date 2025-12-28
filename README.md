@@ -430,34 +430,25 @@ En este ejercicio se compararán las siguientes arquitecturas.
 
 La primera versión de YOLO se caracteriza por:
 
-1. Los targets solo tienen una box como máximo (cada celda solo puede ser responsable de un objeto). Si dos objetos coinciden en la misma celda, nos quedamos con el más grande.
-2. El modelo produce dos bbox.
-3. De las dos bbox solo uno será responsable de predecir el objeto de la celda, la que mayor IoU tenga.
-4. NMS en inferencia.
-5. La confianza sigue la siguiente fórmula:
+* Los targets solo tienen una box como máximo (cada celda solo puede ser responsable de un objeto). Si dos objetos coinciden en la misma celda, nos quedamos con el más grande.
+* El modelo produce dos bbox.
+* De las dos bbox solo uno será responsable de predecir el objeto de la celda, la que mayor IoU tenga.
+* NMS en inferencia.
+* La confianza sigue la siguiente fórmula:
 
 ![Imagen fórmula](./images/confidence_formula.png)
 
 
-6. Parámetros de la caja: (x,y) relativos a la celda; (w,h) relativos a la imagen
-7. Función de pérdida con pesos distintos
+* Parámetros de la caja: (x,y) relativos a la celda; (w,h) relativos a la imagen
+* Función de pérdida con pesos distintos: La loss de YOLOv1 combina:
 
-La loss de YOLOv1 combina:
+    * error de localización
 
-* error de localización
+    * error de confianza (objeto vs no objeto)
 
-* error de confianza (objeto vs no objeto)
+    * error de clasificación
 
-* error de clasificación
-
-* sqrt(w), sqrt(h) en la loss para que errores en cajas grandes no dominen tanto y para estabilizar.
-
-8. Clasificación por celda: una sola distribución de clases por celda
-
-En YOLOv1 las clases son por celda, no por bbox.
-Es decir, la celda produce la probabilidad por clase una vez, y luego se combina con la confianza de cada bbox.
-Esto es una limitación típica cuando hay objetos distintos muy cerca o en la misma celda.
-
+    * sqrt(w), sqrt(h) en la loss para que errores en cajas grandes no dominen tanto y para estabilizar.
 
 ## YOLO v1 : producción de targets.
 
