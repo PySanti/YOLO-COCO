@@ -461,7 +461,7 @@ Esto es una limitación típica cuando hay objetos distintos muy cerca o en la m
 
 ## YOLO v1 : producción de targets.
 
-Utilizando la siguiente función, logramos producir un tensor a partir de las annotations de las imágenes. Este tensor tendra solo una box por celda, como asi lo indica el [paper](https://pjreddie.com/static/papers/yolo_1.pdf) de YOLO v1:
+Utilizando la siguiente función, logramos producir un tensor a partir de las annotations de las imágenes. Este tensor tendrá solo una box por celda, como así lo indica el [paper](https://pjreddie.com/static/papers/yolo_1.pdf) de YOLO v1:
 
 ```python
 
@@ -650,7 +650,7 @@ class YOLOv1(nn.Module):
 
 ## YOLO v1: cálculo de error.
 
-A continuacion, se muestra la funcion de error utilizada explicando sus componentes mas importantes:
+A continuación, se muestra la función de error utilizada explicando sus componentes más importantes:
 
 
 ```python
@@ -869,9 +869,9 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
     return box_loss + obj_loss + noobj_loss + class_loss
 ```
 
-## Separacion de componentes (funcion de perdida, yolov1)
+## Separación de componentes (función de perdida, yolov1)
 
-En esta parte, primero se separa el tensor de prediccion en dos : una parte para los anchor1 (p1) y otra para los anchor2 (p2).
+En esta parte, primero se separa el tensor de predicción en dos : una parte para los anchor1 (p1) y otra para los anchor2 (p2).
 
 Luego, para cada uno de los tensores generados anteriormente (p1 y p2) se separan sus componentes (confianza, clases y boxes). Luego se hace lo mismo para el tensor target.
 
@@ -901,9 +901,9 @@ Luego, para cada uno de los tensores generados anteriormente (p1 y p2) se separa
 
 ```
 
-## Conversion de escalas de boxes (funcion de perdida, yolov1)
+## Conversión de escalas de boxes (función de perdida, yolov1)
 
-En esta parte, convertimos la escala de las boxes, asegurandonos de que todas esten en valores relativos a la imagen y no a la celda.
+En esta parte, convertimos la escala de las boxes, asegurándonos de que todas estén en valores relativos a la imagen y no a la celda.
 
 ```python
 
@@ -914,9 +914,9 @@ En esta parte, convertimos la escala de las boxes, asegurandonos de que todas es
 
 ```
 
-## Uso de IoU para asignacion (funcion de perdida, yolov1)
+## Uso de IoU para asignación (función de perdida, yolov1)
 
-Usamos IoU para generar una matriz que dictara cual de los dos anchors sera responsable para cada celda:
+Usamos IoU para generar una matriz que dictará cual de los dos anchors será responsable para cada celda:
 
 ```python
 
@@ -929,11 +929,11 @@ Usamos IoU para generar una matriz que dictara cual de los dos anchors sera resp
 
 ```
 
-La matriz `best_is_2` es una matriz de `GRID_SIZExGRID_SIZE` que tendra `True` en las celdas correspondientes a aquellas en donde el anchor2 deba ser responsable, y False cuando el 1 deba ser responsable.
+La matriz `best_is_2` es una matriz de `GRID_SIZExGRID_SIZE` que tendrá `True` en las celdas correspondientes a aquellas en donde el anchor2 deba ser responsable, y False cuando el 1 deba ser responsable.
 
-## Generacion de tensor de prediccion final (funcion de perdida, yolov1)
+## Generación de tensor de predicción final (función de perdida, yolov1)
 
-En el siguiente codigo se genera la matriz de prediccion final con los anchors responsables.
+En el siguiente código se genera la matriz de predicción final con los anchors responsables.
 
 ```python
 
@@ -946,9 +946,9 @@ En el siguiente codigo se genera la matriz de prediccion final con los anchors r
 
 Para cada celda donde `best_is_2` tenga True, se asigna la celda correspondiente al anchor 2, y anchor 1 para el caso contrario.
 
-Luego se genera una matriz que tendra la confianza de 1 cuando el IoU de 2 sea mayor. Esto se hace para penalizar los falsos positivos de la red.
+Luego se genera una matriz que tendrá la confianza de 1 cuando el IoU de 2 sea mayor. Esto se hace para penalizar los falsos positivos de la red.
 
-## Calculo de error (funcion de perdida, yolov1)
+## Cálculo de error (función de perdida, yolov1)
 
 ```python
     # ------------------------------------------------------------
@@ -988,6 +988,6 @@ Luego se genera una matriz que tendra la confianza de 1 cuando el IoU de 2 sea m
     return box_loss + obj_loss + noobj_loss + class_loss
 ```
 
-## Generacion de prediccion final
+## Generación de predicción final
 #   Evaluación
 
