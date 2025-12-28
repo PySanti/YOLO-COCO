@@ -436,7 +436,9 @@ La primera versión de YOLO se caracteriza por:
 * NMS en inferencia.
 * La confianza sigue la siguiente fórmula:
 
-![Imagen fórmula](./images/confidence_formula.png)
+$$
+conf = P(obj) * IoU(pred, gt)
+$$
 
 
 * Parámetros de la caja: (x,y) relativos a la celda; (w,h) relativos a la imagen
@@ -979,6 +981,5 @@ Luego se genera una matriz que tendrá la confianza de 1 cuando el IoU de 2 sea 
     return box_loss + obj_loss + noobj_loss + class_loss
 ```
 
-## Generación de predicción final
 #   Evaluación
 
