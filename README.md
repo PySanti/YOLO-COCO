@@ -1084,3 +1084,13 @@ La unica diferencia notoria es que en el paper original la prediccion de clase s
 
 #   Evaluación
 
+
+# YOLO v1
+
+Luego de 20 epocas, se logro el siguiente resultado (solo evaluando loss).
+
+```
+Epoch 20/20 -  train_loss : 1170.45 - val_loss : 1187.38
+```
+
+
