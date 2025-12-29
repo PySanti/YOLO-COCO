@@ -4,11 +4,11 @@ import time
 from utils.yolov1.YOLOv1 import YOLOv1
 from utils.YOLODataset import YOLODataset
 from torch import optim
-from utils.yolov1.yolov1_loss import allocate_prediction_yolov1, yolov1_loss
+from utils.yolov1.yolov1_loss import yolov1_loss
 from torch.utils.data import DataLoader
 from torchvision.transforms import transforms
 from utils.MACROS import *
-from utils.utils import deencode_yolo_target, load_images_paths, render_yolo_image
+from utils.utils import  load_images_paths
 
 DEVICE  = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -25,8 +25,9 @@ if __name__ == "__main__":
     train_dataset = YOLODataset(X_train_paths, Y_train_wrapper, transformer)
 
 
-    #Y_val_wrapper = COCO(VAL_ANN_FILE)
-    #X_val_paths = load_images_paths("./dataset/val2017/val2017/")
+    Y_val_wrapper = COCO(VAL_ANN_FILE)
+    X_val_paths = load_images_paths("./dataset/val2017/")
+    val_dataset = YOLODataset(X_val_paths, Y_val_wrapper, transformer)
 
     TRAIN_LOADER = DataLoader(
             dataset=train_dataset, 
@@ -36,6 +37,15 @@ if __name__ == "__main__":
             pin_memory=True,
             persistent_workers=True
     )
+
+    VAL_LOADER = DataLoader(
+            dataset = val_dataset,
+            batch_size=BATCH_SIZE,
+            shuffle=False,
+            num_workers=2,
+            pin_memory=True,
+            persistent_workers=True
+            )
 
     model = YOLOv1().to(DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -47,7 +57,7 @@ if __name__ == "__main__":
 
     for epoch in range(num_epochs):
         model.train()
-        epoch_loss = 0
+        train_loss = 0
 
         print("-------------")
 
@@ -68,10 +78,27 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
 
-            epoch_loss += loss.item()
+            train_loss += loss.item()
 
-            print(f"({i}/{len(TRAIN_LOADER)}) - {(time.time()-t1)*(len(TRAIN_LOADER)-i-1):.1f} --- {sum(ignored_boxes)/BATCH_SIZE:.2f} IB", end="")
+            print(f"({i+1}/{len(TRAIN_LOADER)}) - {(time.time()-t1)*(len(TRAIN_LOADER)-i-1):.1f} --- {sum(ignored_boxes)/BATCH_SIZE:.2f} IB", end="")
+        print("\n")
+
+        model.eval()
+        with torch.no_grad():
+            val_loss = 0
+            for i, (images, targets, ignored_boxes) in enumerate(VAL_LOADER):
+                print("\r", end="")
+                t1 = time.time()
+                images, targets = images.to(DEVICE), targets.to(DEVICE)
+
+                predictions = model(images)
+
+                loss = criterion(predictions, targets, num_classes=NUM_CLASSES)
+
+                val_loss+=loss
+
+                print(f"({i+1}/{len(VAL_LOADER)}) - {(time.time()-t1)*(len(VAL_LOADER)-i-1):.1f}", end="")
 
         print("\n")
-        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss/(len(train_dataset)//BATCH_SIZE):.4f}")
+        print(f"Epoch {epoch+1}/{num_epochs} -  train_loss : {train_loss/len(TRAIN_LOADER):.4f} - val_loss : {val_loss / len(VAL_LOADER)}")
 
