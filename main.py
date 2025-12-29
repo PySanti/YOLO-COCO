@@ -1,10 +1,10 @@
 from pycocotools.coco import COCO
 import torch
 import time
-from utils.YOLOv1 import YOLOv1
+from utils.yolov1.YOLOv1 import YOLOv1
 from utils.YOLODataset import YOLODataset
 from torch import optim
-from utils.yolov1_loss import yolov1_loss
+from utils.yolov1.yolov1_loss import yolov1_loss
 from torch.utils.data import DataLoader
 from torchvision.transforms import transforms
 from utils.MACROS import *
