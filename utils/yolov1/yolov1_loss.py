@@ -1,4 +1,5 @@
 import torch
+from utils.MACROS import NUM_CLASSES
 from utils.yolo_iou import yolo_iou
 
 
@@ -73,6 +74,59 @@ def _to_abs_xywh_from_cell(box_tx_ty_tw_th: torch.Tensor, S: int) -> torch.Tenso
     # Reconstruimos el tensor [...,4] con el mismo orden
     return torch.stack((x_abs, y_abs, w_abs, h_abs), dim=-1)
 
+def allocate_prediction_yolov1(predictions, targets, num_classes=NUM_CLASSES):
+    """
+        Toma un tensor generado por un modelo YOLOv1 y lo retorna luego de implementar el
+        algoritmod de asignacion
+    """
+    B, S, _, P = predictions.shape
+
+    C = num_classes
+    A = 2                       # anchors por celda
+    stride = 5 + C              # tamaño por anchor: 4 box + 1 conf + C clases
+    expected_P = A * stride     # 2*(5+C)
+
+    # Validación defensiva: evita bugs silenciosos por mismatch en el head o en el dataset
+    if P != expected_P:
+        raise ValueError(
+            f"Predictions last dim debe ser {expected_P} (= {A}*(5+{C})) pero llegó {P}."
+        )
+    if targets.shape[-1] != (5 + C):
+        raise ValueError(
+            f"Targets last dim debe ser {5+C} (= 5+{C}) pero llegó {targets.shape[-1]}."
+        )
+
+    p1 = predictions[..., 0:stride]
+    p2 = predictions[..., stride:2 * stride]
+
+    pred_box1 = p1[..., 0:4]          # (B,S,S,4) -> [tx,ty,tw,th] en tu espacio de predicción
+    pred_conf1 = p1[..., 4]           # (B,S,S)
+    pred_cls1 = p1[..., 5:5 + C]      # (B,S,S,C)
+
+    # Anchor 2
+    pred_box2 = p2[..., 0:4]
+    pred_conf2 = p2[..., 4]
+    pred_cls2 = p2[..., 5:5 + C]
+
+    # separacion de componentes para el target
+    target_box = targets[..., 0:4]
+
+    pred_abs1 = _to_abs_xywh_from_cell(pred_box1, S)     # (B,S,S,4)
+    pred_abs2 = _to_abs_xywh_from_cell(pred_box2, S)     # (B,S,S,4)
+    targ_abs = _to_abs_xywh_from_cell(target_box, S)     # (B,S,S,4)
+
+    # IoU por celda (solo mide geometría, no conf ni clase)
+    iou1 = yolo_iou(pred_abs1, targ_abs)  # (B,S,S)
+    iou2 = yolo_iou(pred_abs2, targ_abs)  # (B,S,S)
+
+    best_is_2 = iou2 > iou1  # (B,S,S) True => anchor2 es el responsable
+
+    best_is_2_exp = best_is_2.unsqueeze(-1)  # (B,S,S,1) para poder hacer where en tensores [...,4] o [...,C]
+
+    resp_box = torch.where(best_is_2_exp, pred_box2, pred_box1)   # (b,s,s,4)
+    resp_conf = torch.where(best_is_2, pred_conf2, pred_conf1)    # (b,s,s)
+    resp_cls = torch.where(best_is_2_exp, pred_cls2, pred_cls1)   # (b,s,s,c)
+    return torch.cat((resp_box, resp_conf.unsqueeze(-1), resp_cls), dim=-1), (iou1, iou2)
 
 def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=0.5):
     """
@@ -95,12 +149,6 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
         con _to_abs_xywh_from_cell() antes de llamar a yolo_iou().
     """
 
-    # ------------------------------------------------------------
-    # Extraemos dimensiones:
-    # B: batch
-    # S: número de celdas por eje (grid SxS)
-    # P: tamaño del vector por celda en predictions
-    # ------------------------------------------------------------
     B, S, _, P = predictions.shape
 
     C = num_classes
@@ -118,58 +166,30 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
             f"Targets last dim debe ser {5+C} (= 5+{C}) pero llegó {targets.shape[-1]}."
         )
 
-    # separacion de anchors 1 y anchors 2
     p1 = predictions[..., 0:stride]
     p2 = predictions[..., stride:2 * stride]
 
-    # separacion de componentes para cada anchor
-    # Anchor 1
-    pred_box1 = p1[..., 0:4]          # (B,S,S,4) -> [tx,ty,tw,th] en tu espacio de predicción
     pred_conf1 = p1[..., 4]           # (B,S,S)
-    pred_cls1 = p1[..., 5:5 + C]      # (B,S,S,C)
 
     # Anchor 2
-    pred_box2 = p2[..., 0:4]
     pred_conf2 = p2[..., 4]
-    pred_cls2 = p2[..., 5:5 + C]
 
     # separacion de componentes para el target
     target_box = targets[..., 0:4]
     target_conf = targets[..., 4]
-    target_cls = targets[..., 5:5 + C]
-
-    # Máscaras booleanas:
-    # obj_mask: celdas con objeto
-    # noobj_mask: celdas sin objeto
+    target_cls = targets[..., 5:]
+    
     obj_mask = target_conf > 0
     noobj_mask = ~obj_mask
 
-    # ------------------------------------------------------------
-    # IoU consistente:
-    # Convertimos pred y target a [x_abs,y_abs,w_abs,h_abs] en (0..1) respecto a la imagen.
-    # Así el IoU no mezcla escalas de celda vs imagen (bug común).
-    # ------------------------------------------------------------
-    pred_abs1 = _to_abs_xywh_from_cell(pred_box1, S)     # (B,S,S,4)
-    pred_abs2 = _to_abs_xywh_from_cell(pred_box2, S)     # (B,S,S,4)
-    targ_abs = _to_abs_xywh_from_cell(target_box, S)     # (B,S,S,4)
+    allocated_prediction, (iou1, iou2) = allocate_prediction_yolov1(predictions, targets)
 
-    # IoU por celda (solo mide geometría, no conf ni clase)
-    iou1 = yolo_iou(pred_abs1, targ_abs)  # (B,S,S)
-    iou2 = yolo_iou(pred_abs2, targ_abs)  # (B,S,S)
+    resp_box = allocated_prediction[..., :4]
+    resp_conf = allocated_prediction[..., 4]
+    resp_cls = allocated_prediction[..., 5:]
 
-    # Para cada celda, decidimos qué anchor explica mejor el target (mayor IoU)
     best_is_2 = iou2 > iou1  # (B,S,S) True => anchor2 es el responsable
 
-    # ------------------------------------------------------------
-    # Elegimos, por celda, cuál anchor es el responsable:
-    # - resp_box / resp_conf / resp_cls => del anchor ganador
-    # - nonresp_conf => del anchor perdedor (para penalizarlo en celdas con objeto)
-    # ------------------------------------------------------------
-    best_is_2_exp = best_is_2.unsqueeze(-1)  # (B,S,S,1) para poder hacer where en tensores [...,4] o [...,C]
-
-    resp_box = torch.where(best_is_2_exp, pred_box2, pred_box1)   # (b,s,s,4)
-    resp_conf = torch.where(best_is_2, pred_conf2, pred_conf1)    # (b,s,s)
-    resp_cls = torch.where(best_is_2_exp, pred_cls2, pred_cls1)   # (b,s,s,c)
 
     nonresp_conf = torch.where(best_is_2, pred_conf1, pred_conf2) # (B,S,S)
     iou_best = torch.where(best_is_2, iou2, iou1).detach()      # detach = target constante
@@ -197,8 +217,4 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
 
     obj_loss = torch.sum((resp_conf[obj_mask] - iou_best[obj_mask]) ** 2)
 
-
-
-
-    # Suma total
     return box_loss + obj_loss + noobj_loss + class_loss
