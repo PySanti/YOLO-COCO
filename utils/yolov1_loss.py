@@ -118,14 +118,11 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
             f"Targets last dim debe ser {5+C} (= 5+{C}) pero llegó {targets.shape[-1]}."
         )
 
-    # ------------------------------------------------------------
-    # Partimos predictions en 2 bloques (uno por anchor):
-    # p1: (B,S,S, 5+C)
-    # p2: (B,S,S, 5+C)
-    # ------------------------------------------------------------
+    # separacion de anchors 1 y anchors 2
     p1 = predictions[..., 0:stride]
     p2 = predictions[..., stride:2 * stride]
 
+    # separacion de componentes para cada anchor
     # Anchor 1
     pred_box1 = p1[..., 0:4]          # (B,S,S,4) -> [tx,ty,tw,th] en tu espacio de predicción
     pred_conf1 = p1[..., 4]           # (B,S,S)
@@ -136,12 +133,7 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
     pred_conf2 = p2[..., 4]
     pred_cls2 = p2[..., 5:5 + C]
 
-    # ------------------------------------------------------------
-    # Targets:
-    # target_box: (B,S,S,4) -> [tx,ty,tw,th]
-    # target_conf: (B,S,S) -> 1 si hay objeto asignado a esa celda, 0 si no
-    # target_cls: (B,S,S,C) -> one-hot
-    # ------------------------------------------------------------
+    # separacion de componentes para el target
     target_box = targets[..., 0:4]
     target_conf = targets[..., 4]
     target_cls = targets[..., 5:5 + C]
@@ -176,30 +168,26 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
     best_is_2_exp = best_is_2.unsqueeze(-1)  # (B,S,S,1) para poder hacer where en tensores [...,4] o [...,C]
 
     resp_box = torch.where(best_is_2_exp, pred_box2, pred_box1)   # (b,s,s,4)
-    resp_conf = torch.where(best_is_2, pred_conf2 * iou2, pred_conf1 * iou1)    # (b,s,s)
+    resp_conf = torch.where(best_is_2, pred_conf2, pred_conf1)    # (b,s,s)
     resp_cls = torch.where(best_is_2_exp, pred_cls2, pred_cls1)   # (b,s,s,c)
 
-
     nonresp_conf = torch.where(best_is_2, pred_conf1, pred_conf2) # (B,S,S)
+    iou_best = torch.where(best_is_2, iou2, iou1).detach()      # detach = target constante
 
-    # ------------------------------------------------------------
-    # COMPONENTES DE LA LOSS
-    #
-    # 1) Box regression:
-    #    Se calcula SOLO donde hay objeto (obj_mask).
-    #    Compara en el “espacio de entrenamiento” [tx,ty,tw,th],
-    #    o sea, el mismo formato del target.
-    # ------------------------------------------------------------
-    box_loss = lambda_coord * torch.sum(((resp_box - target_box) ** 2)[obj_mask])
 
-    # ------------------------------------------------------------
-    # 2) Confidence:
-    #    - obj_loss: el anchor responsable debe predecir conf ~ 1 (target_conf=1)
-    #    - noobj_loss: penaliza conf alto en:
-    #        a) celdas sin objeto (ambos anchors)
-    #        b) el anchor NO responsable en celdas con objeto (debe “callarse”)
-    # ------------------------------------------------------------
-    obj_loss = torch.sum((resp_conf[obj_mask] - target_conf[obj_mask]) ** 2)
+    resp_xy = resp_box[..., 0:2]
+    targ_xy = target_box[..., 0:2]
+
+    resp_wh = resp_box[..., 2:4].clamp(min=1e-6)
+    targ_wh = target_box[..., 2:4].clamp(min=1e-6)
+
+    xy_loss = torch.sum(((resp_xy - targ_xy) ** 2)[obj_mask])
+    wh_loss = torch.sum(((torch.sqrt(resp_wh) - torch.sqrt(targ_wh)) ** 2)[obj_mask])
+
+
+
+    box_loss = lambda_coord * (xy_loss + wh_loss)
+    class_loss = torch.sum(((resp_cls - target_cls) ** 2)[obj_mask])
 
     noobj_loss = lambda_noobj * (
         torch.sum((pred_conf1[noobj_mask]) ** 2) +
@@ -207,13 +195,10 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
         torch.sum((nonresp_conf[obj_mask]) ** 2)
     )
 
-    # ------------------------------------------------------------
-    # 3) Classification:
-    #    SOLO donde hay objeto.
-    #    Como tu modelo predice clases por anchor (y no una sola vez por celda),
-    #    usamos las clases del anchor responsable.
-    # ------------------------------------------------------------
-    class_loss = torch.sum(((resp_cls - target_cls) ** 2)[obj_mask])
+    obj_loss = torch.sum((resp_conf[obj_mask] - iou_best[obj_mask]) ** 2)
+
+
+
 
     # Suma total
     return box_loss + obj_loss + noobj_loss + class_loss
