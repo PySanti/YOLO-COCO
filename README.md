@@ -981,5 +981,106 @@ Luego se genera una matriz que tendrá la confianza de 1 cuando el IoU de 2 sea 
     return box_loss + obj_loss + noobj_loss + class_loss
 ```
 
+## Version final de la funcion de error (funcion de perdida yolov1)
+
+```python
+
+def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=0.5):
+    B, S, _, P = predictions.shape
+
+    C = num_classes
+    A = 2                       # anchors por celda
+    stride = 5 + C              # tamaño por anchor: 4 box + 1 conf + C clases
+    expected_P = A * stride     # 2*(5+C)
+
+    if P != expected_P:
+        raise ValueError(
+            f"Predictions last dim debe ser {expected_P} (= {A}*(5+{C})) pero llegó {P}."
+        )
+    if targets.shape[-1] != (5 + C):
+        raise ValueError(
+            f"Targets last dim debe ser {5+C} (= 5+{C}) pero llegó {targets.shape[-1]}."
+        )
+
+    # separacion de anchors 1 y anchors 2
+    p1 = predictions[..., 0:stride]
+    p2 = predictions[..., stride:2 * stride]
+
+    # separacion de componentes para cada anchor
+    # Anchor 1
+    pred_box1 = p1[..., 0:4]          # (B,S,S,4)
+    pred_conf1 = p1[..., 4]           # (B,S,S)
+    pred_cls1 = p1[..., 5:5 + C]      # (B,S,S,C)
+
+    # Anchor 2
+    pred_box2 = p2[..., 0:4]
+    pred_conf2 = p2[..., 4]
+    pred_cls2 = p2[..., 5:5 + C]
+
+    # separacion de componentes para el target
+    target_box = targets[..., 0:4]
+    target_conf = targets[..., 4]
+    target_cls = targets[..., 5:5 + C]
+
+    # Máscaras booleanas:
+    obj_mask = target_conf > 0
+    noobj_mask = ~obj_mask
+
+    # Convertimos pred y target a [x_abs,y_abs,w_abs,h_abs] en (0..1) respecto a la imagen.
+
+    pred_abs1 = _to_abs_xywh_from_cell(pred_box1, S)     # (B,S,S,4)
+    pred_abs2 = _to_abs_xywh_from_cell(pred_box2, S)     # (B,S,S,4)
+    targ_abs = _to_abs_xywh_from_cell(target_box, S)     # (B,S,S,4)
+
+    # IoU por celda
+    iou1 = yolo_iou(pred_abs1, targ_abs)  # (B,S,S)
+    iou2 = yolo_iou(pred_abs2, targ_abs)  # (B,S,S)
+
+    # Para cada celda, decidimos qué anchor explica mejor el target (mayor IoU)
+    best_is_2 = iou2 > iou1  # (B,S,S) True => anchor2 es el responsable
+
+    best_is_2_exp = best_is_2.unsqueeze(-1)  # (B,S,S,1) para poder hacer where en tensores [...,4] o [...,C]
+
+    resp_box = torch.where(best_is_2_exp, pred_box2, pred_box1)   # (b,s,s,4)
+    resp_conf = torch.where(best_is_2, pred_conf2, pred_conf1)    # (b,s,s)
+    resp_cls = torch.where(best_is_2_exp, pred_cls2, pred_cls1)   # (b,s,s,c)
+
+    nonresp_conf = torch.where(best_is_2, pred_conf1, pred_conf2) # (B,S,S)
+    iou_best = torch.where(best_is_2, iou2, iou1).detach()
+
+
+    resp_xy = resp_box[..., 0:2]
+    targ_xy = target_box[..., 0:2]
+
+    resp_wh = resp_box[..., 2:4].clamp(min=1e-6) # (para evitar raiz cuadrada de negativos o 0)
+    targ_wh = target_box[..., 2:4].clamp(min=1e-6)
+
+    xy_loss = torch.sum(((resp_xy - targ_xy) ** 2)[obj_mask])
+    wh_loss = torch.sum(((torch.sqrt(resp_wh) - torch.sqrt(targ_wh)) ** 2)[obj_mask])
+
+
+
+    box_loss = lambda_coord * (xy_loss + wh_loss)
+    class_loss = torch.sum(((resp_cls - target_cls) ** 2)[obj_mask])
+
+    noobj_loss = lambda_noobj * (
+        torch.sum((pred_conf1[noobj_mask]) ** 2) +
+        torch.sum((pred_conf2[noobj_mask]) ** 2) +
+        torch.sum((nonresp_conf[obj_mask]) ** 2)
+    )
+
+    obj_loss = torch.sum((resp_conf[obj_mask] - iou_best[obj_mask]) ** 2)
+
+
+
+
+    # Suma total
+    return box_loss + obj_loss + noobj_loss + class_loss
+```
+
+## Diferencia entre implementacion actual y paper.
+
+La unica diferencia notoria es que en el paper original la prediccion de clase se hace por celda y no por anchor, esto se traduce en que nuestra prediccion deberia de ser inicialmente `grid_size x grid_size x (2*5)+90` pero es `grid_size x grid_size x 2*(5+90)`.
+
 #   Evaluación
 
