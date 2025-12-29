@@ -186,3 +186,28 @@ def load_images_paths(folder : str):
 
 def warning(string):
     print(Fore.YELLOW + string + Fore.RESET)
+
+def deencode_yolo_target(target):
+    """
+        Toma un tensor que representa una prediccion o un target
+        y lo convierte en una lista de annotations.
+    """
+    annotations = []
+    new_annotation = None
+
+    target_boxes = target[..., 0:4]
+    target_conf = target[..., 4]
+    target_clases = target[..., 5:]
+
+    obj_mask = target_conf > 0
+
+    for row in obj_mask:
+        for column in row:
+            if row[int(column)]:
+                new_annotation = {
+                        "category_id" : target_clases[row][column],
+                        "bbox" : target_boxes[row][column],
+                        }
+                annotations.append(new_annotation)
+    return annotations
+
