@@ -198,15 +198,14 @@ def deencode_yolo_target(target):
     target_boxes = target[..., 0:4]
     target_conf = target[..., 4]
     target_clases = target[..., 5:]
-
     obj_mask = target_conf > 0
 
-    for row in obj_mask:
-        for column in row:
-            if row[int(column)]:
+    for a,row in enumerate(obj_mask):
+        for b, column in enumerate(row):
+            if obj_mask[a][b]:
                 new_annotation = {
-                        "category_id" : target_clases[row][column],
-                        "bbox" : target_boxes[row][column],
+                        "category_id" : list(target_clases[a][b]).index(max(target_clases[a][b])),
+                        "bbox" : [float(a) for a in list(target_boxes[a][b])],
                         }
                 annotations.append(new_annotation)
     return annotations

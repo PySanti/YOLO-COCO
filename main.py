@@ -4,11 +4,11 @@ import time
 from utils.yolov1.YOLOv1 import YOLOv1
 from utils.YOLODataset import YOLODataset
 from torch import optim
-from utils.yolov1.yolov1_loss import yolov1_loss
+from utils.yolov1.yolov1_loss import allocate_prediction_yolov1, yolov1_loss
 from torch.utils.data import DataLoader
 from torchvision.transforms import transforms
 from utils.MACROS import *
-from utils.utils import load_images_paths
+from utils.utils import deencode_yolo_target, load_images_paths, render_yolo_image
 
 DEVICE  = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -39,7 +39,8 @@ if __name__ == "__main__":
 
     model = YOLOv1().to(DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-    criterion = yolov1_loss  # Your loss function from earlier
+    criterion = yolov1_loss
+
 
     print("Empezando entrenamiento")
     num_epochs = 20
@@ -70,5 +71,7 @@ if __name__ == "__main__":
             epoch_loss += loss.item()
 
             print(f"({i}/{len(TRAIN_LOADER)}) - {(time.time()-t1)*(len(TRAIN_LOADER)-i-1):.1f} --- {sum(ignored_boxes)/BATCH_SIZE:.2f} IB", end="")
+
         print("\n")
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss/(len(train_dataset)//BATCH_SIZE):.4f}")
+
