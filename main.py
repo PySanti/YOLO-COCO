@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
                 loss = criterion(predictions, targets, num_classes=NUM_CLASSES)
 
-                val_loss+=loss
+                val_loss+=loss.item()
 
                 print(f"({i+1}/{len(VAL_LOADER)}) - {(time.time()-t1)*(len(VAL_LOADER)-i-1):.1f}", end="")
 
