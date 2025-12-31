@@ -356,6 +356,59 @@ Las clases que no aparecen en val son   : [12, 26, 29, 30, 45, 66, 68, 69, 71, 8
 
 ```
 
+Luego se creo un diccionario en el cual las clases si son continuas, esto se hizo por que de otro modo, nos veriamos en la obligacion de hacer que el modelo predijera un vector de 90 clases cuando solo se usan 80.
+Esto llevo a la necesidad de tener que transformar las categorias traidas por las annotations, ya que estas estaban hechas para el uso de 90 clases. Se hizo de la siguiente forma:
+
+
+```python
+
+# main.py
+
+...
+
+    # Las clases base de coco van del 1 .. 90 con saltos, clases que nunca aparecen
+    # Se hizo un diccionario limpio de las clases (COCO_CLASSES_ES), sin embargo, las clases vienen en las annotations con el formato anterior ... Se deben transformar al activar la neurona en el target
+    OLD_IDS = sorted(Y_train_wrapper.getCatIds()) # una lista de los ids antiguos
+    NEW_IDS = {cid: i+1 for i, cid in enumerate(OLD_IDS)} # obtienes un diccionario de id_viejo : id_nuevo
+
+...
+```
+
+```python
+
+# utils/encode_yolo_target.py
+
+def encode_yolov1(
+    previus_img_size,
+    annotations,
+    img_size,
+    grid_size,
+    num_classes,
+    new_ids
+):
+
+
+    ...
+
+
+    for ann in annotations:
+
+        ...
+
+        target[j, i, 0] = tx
+        target[j, i, 1] = ty
+        target[j, i, 2] = tw
+        target[j, i, 3] = th
+        target[j, i, 4] = 1.0
+
+        class_idx = new_ids[ann['category_id']]-1
+        target[j, i, 5:] = 0.0
+        target[j, i, 5 + class_idx] = 1.0
+
+    return target, ignored
+```
+
+
 
 # Entendiendo el formato de los targets
 
