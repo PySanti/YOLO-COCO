@@ -42,13 +42,13 @@ if __name__ == "__main__":
             dataset = val_dataset,
             batch_size=BATCH_SIZE,
             shuffle=False,
-            num_workers=2,
+            num_workers=5,
             pin_memory=True,
             persistent_workers=True
             )
 
     model = YOLOv1().to(DEVICE)
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.0001,weight_decay=0.0005)
     criterion = yolov1_loss
 
 

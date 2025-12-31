@@ -1,19 +1,29 @@
 from torch import nn
 from utils.MACROS import *
-import torch
 import torch.nn as nn
 from utils.ConvBlock import ConvBlock
+from utils.SEBlock import SEBlock
+from utils.ResBlock import ResBlock
 
 
 class YOLOV1Backbone(nn.Module):
     def __init__(self):
         super(YOLOV1Backbone, self).__init__()
         self.layers = nn.Sequential(
-            ConvBlock(3, 32, kernel_size=3, stride=1, padding=1),
-            nn.MaxPool2d(2, 2),
-            ConvBlock(32, 64, kernel_size=3, stride=1, padding=1),
-            nn.MaxPool2d(2, 2),
-            ConvBlock(64, 128, kernel_size=3, stride=1, padding=1),
+            ConvBlock(3, 32, kernel_size=7, padding=3, stride=2),
+            ConvBlock(32, 64, kernel_size=5, padding=2, stride=2),
+            ResBlock(64, 96),
+            SEBlock(96),
+            ResBlock(96, 128, downsample=True),
+            SEBlock(128),
+            ResBlock(128, 160, downsample=True),
+            SEBlock(160),
+            ResBlock(160, 192, downsample=True),
+            SEBlock(192),
+            ResBlock(192, 192, downsample=True),
+            SEBlock(192),
+            ResBlock(192, 256, downsample=True),
+            SEBlock(256),
             nn.AdaptiveAvgPool2d(GRID_SIZE)
         )
 
@@ -27,7 +37,7 @@ class YOLOV1Head(nn.Module):
         self.grid_size = grid_size
         self.num_classes = num_classes
         self.num_anchors = num_anchors
-        self.detector = nn.Conv2d(128, num_anchors * (5 + num_classes), kernel_size=1)
+        self.detector = nn.Conv2d(256, num_anchors * (5 + num_classes), kernel_size=1)
 
     def forward(self, x):
         return self.detector(x).permute(0, 2, 3, 1).contiguous()

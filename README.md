@@ -1093,4 +1093,117 @@ Luego de 20 epocas, se logro el siguiente resultado (solo evaluando loss).
 Epoch 20/20 -  train_loss : 1170.45 - val_loss : 1187.38
 ```
 
+## Mejora de Backbone a traves de implementacion de Residual Blocks y Squeeze - Excited Blocks
 
+Para mejorar el backbone de la red, se realizo lo siguiente:
+
+```python
+
+from torch import nn
+from utils.MACROS import *
+import torch.nn as nn
+from utils.ConvBlock import ConvBlock
+from utils.SEBlock import SEBlock
+from utils.ResBlock import ResBlock
+
+
+class YOLOV1Backbone(nn.Module):
+    def __init__(self):
+        super(YOLOV1Backbone, self).__init__()
+        self.layers = nn.Sequential(
+            ConvBlock(3, 32, kernel_size=7, padding=3, stride=2),
+            ConvBlock(32, 64, kernel_size=5, padding=2, stride=2),
+            ResBlock(64, 96),
+            SEBlock(96),
+            ResBlock(96, 128, downsample=True),
+            SEBlock(128),
+            ResBlock(128, 160, downsample=True),
+            SEBlock(160),
+            ResBlock(160, 192, downsample=True),
+            SEBlock(192),
+            ResBlock(192, 192, downsample=True),
+            SEBlock(192),
+            ResBlock(192, 256, downsample=True),
+            SEBlock(256),
+            nn.AdaptiveAvgPool2d(GRID_SIZE)
+        )
+
+    def forward(self, x):
+        return self.layers(x)
+
+
+class YOLOV1Head(nn.Module):
+    def __init__(self, grid_size, num_classes, num_anchors):
+        super(YOLOV1Head, self).__init__()
+        self.grid_size = grid_size
+        self.num_classes = num_classes
+        self.num_anchors = num_anchors
+        self.detector = nn.Conv2d(256, num_anchors * (5 + num_classes), kernel_size=1)
+
+    def forward(self, x):
+        return self.detector(x).permute(0, 2, 3, 1).contiguous()
+
+class YOLOv1(nn.Module):
+    def __init__(self):
+        super(YOLOv1, self).__init__()
+        self.backbone = YOLOV1Backbone()
+        self.head = YOLOV1Head(GRID_SIZE, NUM_CLASSES, 2)
+
+    def forward(self, x):
+        features = self.backbone(x)
+        predictions = self.head(features)
+        return predictions
+
+
+from torch import nn
+from utils.ConvBlock import ConvBlock
+
+
+class ResBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, downsample=False) -> None:
+        super(ResBlock, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.num_layers = 4
+        self.features_ratio = (out_channels - in_channels) // self.num_layers
+        self.layers = nn.Sequential(
+                ConvBlock(in_channels=in_channels, out_channels=self.in_channels + (self.features_ratio), padding=0, stride=2 if downsample else 1, kernel_size=1),
+                ConvBlock(in_channels=self.in_channels + (self.features_ratio), out_channels= self.in_channels + (self.features_ratio*2), padding=1, stride=1, kernel_size=3),
+                ConvBlock(in_channels=self.in_channels + (self.features_ratio*2), out_channels=self.in_channels + (self.features_ratio*3), padding=0, stride=1, kernel_size=1),
+                ConvBlock(in_channels= self.in_channels + (self.features_ratio*3), out_channels=out_channels, padding=1, stride=1, kernel_size=3, activate=False)
+                )
+        self.identity = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=1, padding=0,stride=2 if downsample else 1)
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        output = self.layers(x)
+        x = self.identity(x)
+        return self.relu(x+output)
+
+from torch import nn
+
+class SEBlock(nn.Module):
+    def __init__(self, in_channels) -> None:
+        super(SEBlock, self).__init__()
+        self.in_channels = in_channels
+        self.layers = nn.Sequential(
+            nn.AdaptiveMaxPool2d(1),
+            nn.Flatten(),
+            nn.Linear(in_channels, in_channels*3),
+            nn.ReLU(),
+            nn.Linear(in_channels*3, in_channels),
+            nn.Sigmoid()
+                )
+
+    def forward(self, x):
+        # x: (B, C, H, W)
+        b, c, _, _ = x.shape
+        result = self.layers(x).view(b,c,1,1)
+        return x*result
+```
+
+Presentando los siguientes resultados luego de 20 epocas de entrenamiento:
+
+
+```
+```
