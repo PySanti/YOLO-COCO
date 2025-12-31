@@ -1,12 +1,14 @@
 import torch
 
 
+
 def encode_yolov1(
     previus_img_size,
     annotations,
     img_size,
     grid_size,
     num_classes,
+    new_ids
 ):
     """
     Convierte anotaciones COCO de UNA imagen a un tensor target tipo YOLO.
@@ -103,12 +105,8 @@ def encode_yolov1(
         target[j, i, 3] = th
         target[j, i, 4] = 1.0
 
-        # One-hot de clase (asumiendo COCO: category_id ~ [1..num_classes])
-        cat_id = ann["category_id"]
-        class_idx = cat_id - 1  # si tus clases van de 1 a C
-
-        if 0 <= class_idx < C:
-            target[j, i, 5:] = 0.0
-            target[j, i, 5 + class_idx] = 1.0
+        class_idx = new_ids[ann['category_id']]-1
+        target[j, i, 5:] = 0.0
+        target[j, i, 5 + class_idx] = 1.0
 
     return target, ignored

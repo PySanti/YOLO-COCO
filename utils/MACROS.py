@@ -92,3 +92,6 @@ COCO_CLASSES_ES = {
         78: 'oso de peluche', 
         79: 'secador de pelo', 
         80: 'cepillo de dientes'}
+
+
+

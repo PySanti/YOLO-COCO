@@ -6,11 +6,12 @@ from utils.utils import get_image_target
 from utils.MACROS import *
 
 class YOLODataset(Dataset):
-    def __init__(self, X, Y, transformer) -> None:
+    def __init__(self, X, Y, transformer, new_ids) -> None:
         super().__init__()
         self.X = X # paths list
         self.Y = Y # target wrapper
         self.transformer = transformer
+        self.new_ids = new_ids
 
     def __getitem__(self, idx) :
         """
@@ -22,7 +23,7 @@ class YOLODataset(Dataset):
         image_tensor = self.transformer(image)
         image.close()
         image_annotation = get_image_target(get_image_id(self.X[idx]), self.Y)
-        encoded_target, ignored_boxes = encode_yolov1(prev_size, image_annotation, IMG_SIZE, GRID_SIZE, NUM_CLASSES)
+        encoded_target, ignored_boxes = encode_yolov1(prev_size, image_annotation, IMG_SIZE, GRID_SIZE, NUM_CLASSES, self.new_ids)
         return image_tensor, encoded_target, ignored_boxes
 
     def __len__(self):
