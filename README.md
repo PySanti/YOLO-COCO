@@ -1206,4 +1206,5 @@ Presentando los siguientes resultados luego de 20 epocas de entrenamiento:
 
 
 ```
+Epoch 20/20 -  train_loss : 1053.8120 - val_loss : 1199.8114231109619
 ```
