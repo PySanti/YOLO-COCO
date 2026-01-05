@@ -27,7 +27,7 @@ if __name__ == "__main__":
     # Las clases base de coco van del 1 .. 90 con saltos, clases que nunca aparecen
     # Se hizo un diccionario limpio de las clases (COCO_CLASSES_ES), sin embargo, las clases vienen en las annotations con el formato anterior ... Se deben transformar al activar la neurona en el target
     OLD_IDS = sorted(Y_train_wrapper.getCatIds()) # una lista de los ids antiguos
-    NEW_IDS = {cid: i+1 for i, cid in enumerate(OLD_IDS)} # obtienes un diccionario de id_viejo : id_nuevo
+    NEW_IDS = {cid: i for i, cid in enumerate(OLD_IDS)} # obtienes un diccionario de id_viejo : id_nuevo
 
 
     X_train_paths = load_images_paths("./dataset/train2017/")
@@ -42,7 +42,7 @@ if __name__ == "__main__":
             dataset=train_dataset, 
             batch_size=BATCH_SIZE,
             shuffle=True,
-            num_workers=8,
+            num_workers=10,
             pin_memory=True,
             persistent_workers=True
     )
@@ -80,7 +80,7 @@ if __name__ == "__main__":
             predictions = model(images)
 
             # Loss calculation
-            loss = criterion(predictions, targets, num_classes=NUM_CLASSES)
+            loss = criterion(predictions, targets)
             
             # Backpropagation
             optimizer.zero_grad()
@@ -102,7 +102,7 @@ if __name__ == "__main__":
 
                 predictions = model(images)
 
-                loss = criterion(predictions, targets, num_classes=NUM_CLASSES)
+                loss = criterion(predictions, targets)
 
                 val_loss+=loss.item()
 

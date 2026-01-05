@@ -105,7 +105,7 @@ def encode_yolov1(
         target[j, i, 3] = th
         target[j, i, 4] = 1.0
 
-        class_idx = new_ids[ann['category_id']]-1
+        class_idx = new_ids[ann['category_id']]
         target[j, i, 5:] = 0.0
         target[j, i, 5 + class_idx] = 1.0
 
