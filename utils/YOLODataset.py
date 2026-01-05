@@ -22,7 +22,7 @@ class YOLODataset(Dataset):
         prev_size = image.size
         image_tensor = self.transformer(image)
         image.close()
-        image_annotation = get_image_target(get_image_id(self.X[idx]), self.Y)
+        image_annotation = self.Y[get_image_id(self.X[idx])]
         encoded_target, ignored_boxes = encode_yolov1(prev_size, image_annotation, IMG_SIZE, GRID_SIZE, NUM_CLASSES, self.new_ids)
         return image_tensor, encoded_target, ignored_boxes
 

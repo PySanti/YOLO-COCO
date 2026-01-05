@@ -8,7 +8,7 @@ from utils.yolov1.yolov1_loss import yolov1_loss
 from torch.utils.data import DataLoader
 from torchvision.transforms import transforms
 from utils.MACROS import *
-from utils.utils import  load_images_paths
+from utils.utils import  get_annotations_dict, load_images_paths
 
 DEVICE  = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -22,21 +22,19 @@ if __name__ == "__main__":
 
 
     print("Cargando targets")
-    Y_train_wrapper = COCO(TRAIN_ANN_FILE)
 
+    Y_train_wrapper = COCO(TRAIN_ANN_FILE)
     # Las clases base de coco van del 1 .. 90 con saltos, clases que nunca aparecen
     # Se hizo un diccionario limpio de las clases (COCO_CLASSES_ES), sin embargo, las clases vienen en las annotations con el formato anterior ... Se deben transformar al activar la neurona en el target
     OLD_IDS = sorted(Y_train_wrapper.getCatIds()) # una lista de los ids antiguos
     NEW_IDS = {cid: i for i, cid in enumerate(OLD_IDS)} # obtienes un diccionario de id_viejo : id_nuevo
-
-
     X_train_paths = load_images_paths("./dataset/train2017/")
-    train_dataset = YOLODataset(X_train_paths, Y_train_wrapper, transformer, NEW_IDS)
+    train_dataset = YOLODataset(X_train_paths, get_annotations_dict(Y_train_wrapper), transformer, NEW_IDS)
 
 
     Y_val_wrapper = COCO(VAL_ANN_FILE)
     X_val_paths = load_images_paths("./dataset/val2017/")
-    val_dataset = YOLODataset(X_val_paths, Y_val_wrapper, transformer, NEW_IDS)
+    val_dataset = YOLODataset(X_val_paths, get_annotations_dict(Y_val_wrapper), transformer, NEW_IDS)
 
     TRAIN_LOADER = DataLoader(
             dataset=train_dataset, 

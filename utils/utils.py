@@ -93,20 +93,6 @@ def get_dataset_classes_count(paths, target_wrapper):
             train_class_dist[cat] +=1
     return train_class_dist
 
-
-def get_image_id(image_path):
-    filename = os.path.basename(image_path)          # '000000391895.jpg'
-    stem, _ = os.path.splitext(filename)             # '000000391895'
-    return int(stem)
-
-def get_image_target(image_id, target_wrapper):
-    """
-        Retorna el target de la imagen a partir de su ID
-    """
-    ann_ids = target_wrapper.getAnnIds(imgIds=[image_id]) # se obtiene el id de la anotacion a partir de la imagen
-    annotations = target_wrapper.loadAnns(ann_ids) # se obtienen las anotaciones
-    return [{x:y for x,y in a.items() if x in ANNOTATIONS_REQUIRED} for a in annotations]
-
 def render_yolo_image(image_tensor, target):
     """
     image_tensor: Tensor [3, H, W] en rango [0,1]
@@ -212,5 +198,34 @@ def deencode_yolo_target(target):
     return annotations
 
 
+
+
+def get_image_id(image_path):
+    filename = os.path.basename(image_path)          # '000000391895.jpg'
+    stem, _ = os.path.splitext(filename)             # '000000391895'
+    return int(stem)
+
+def get_image_target(image_id, target_wrapper):
+    """
+        Retorna el target de la imagen a partir de su ID
+    """
+    ann_ids = target_wrapper.getAnnIds(imgIds=[image_id]) 
+    annotations = target_wrapper.loadAnns(ann_ids) # se obtienen las anotaciones
+    return [{x:y for x,y in a.items() if x in ANNOTATIONS_REQUIRED} for a in annotations]
+
+
+
+def get_annotations_dict(Y_wrapper):
+    """
+        Toma un wrapper de annotations y devuelve un diccionario
+        img_id : annotation
+    """
+
+    ann_by_img = {}
+    for img_id in Y_wrapper.getImgIds():
+        ann_ids = Y_wrapper.getAnnIds(imgIds=[img_id])# se obtiene el id de la anotacion a partir de la imagen
+        anns = Y_wrapper.loadAnns(ann_ids)
+        ann_by_img[img_id] = [{"bbox": a["bbox"], "category_id": a["category_id"]} for a in anns]
+    return ann_by_img
 
 
