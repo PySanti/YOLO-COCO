@@ -130,57 +130,30 @@ def allocate_prediction_yolov1(predictions, targets, num_classes=NUM_CLASSES):
     resp_cls = torch.where(best_is_2_exp, pred_cls2, pred_cls1)   # (b,s,s,c)
     return torch.cat((resp_box, resp_conf.unsqueeze(-1), resp_cls), dim=-1), (iou1, iou2)
 
-def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=0.5):
-    """
-    Loss estilo YOLOv1 (adaptado a tu head), donde:
-      - Predices 2 "anchors" por celda.
-      - Cada anchor predice: [x,y,w,h,conf, clases]
-      - Las clases se predicen POR ANCHOR (por eso el last_dim es 2*(5+C) = 190 con C=90)
 
-    Shapes esperados:
-      predictions: (B, S, S, 2*(5+C))  -> 190 si C=90
-        anchor1: [x,y,w,h, conf, class(0..C-1)]
-        anchor2: [x,y,w,h, conf, class(0..C-1)]
-
-      targets: (B, S, S, 5+C)
-        [tx,ty,tw,th, tconf, onehot_classes...]
-
-    Nota importante de consistencia:
-      - El target guarda (tx,ty) relativo a celda, pero (tw,th) normalizado a imagen.
-      - Para calcular IoU correctamente, convertimos a coordenadas ABS normalizadas
-        con _to_abs_xywh_from_cell() antes de llamar a yolo_iou().
-    """
-
+def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=0.5, lambda_cls=0.5):
     B, S, _, P = predictions.shape
 
     C = num_classes
-    A = 2                       # anchors por celda
-    stride = 5 + C              # tamaÃ±o por anchor: 4 box + 1 conf + C clases
-    expected_P = A * stride     # 2*(5+C)
+    A = 2
+    stride = 5 + C
+    expected_P = A * stride
 
-    # ValidaciÃ³n defensiva: evita bugs silenciosos por mismatch en el head o en el dataset
     if P != expected_P:
-        raise ValueError(
-            f"Predictions last dim debe ser {expected_P} (= {A}*(5+{C})) pero llegÃ³ {P}."
-        )
+        raise ValueError(f"Predictions last dim debe ser {expected_P} (= {A}*(5+{C})) pero llegó {P}.")
     if targets.shape[-1] != (5 + C):
-        raise ValueError(
-            f"Targets last dim debe ser {5+C} (= 5+{C}) pero llegÃ³ {targets.shape[-1]}."
-        )
+        raise ValueError(f"Targets last dim debe ser {5+C} (= 5+{C}) pero llegó {targets.shape[-1]}.")
 
     p1 = predictions[..., 0:stride]
     p2 = predictions[..., stride:2 * stride]
 
-    pred_conf1 = p1[..., 4]           # (B,S,S)
-
-    # Anchor 2
+    pred_conf1 = p1[..., 4]
     pred_conf2 = p2[..., 4]
 
-    # separacion de componentes para el target
     target_box = targets[..., 0:4]
     target_conf = targets[..., 4]
-    target_cls = targets[..., 5:]
-    
+    target_cls = targets[..., 5:]              # one-hot (B,S,S,C)
+
     obj_mask = target_conf > 0
     noobj_mask = ~obj_mask
 
@@ -188,14 +161,11 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
 
     resp_box = allocated_prediction[..., :4]
     resp_conf = allocated_prediction[..., 4]
-    resp_cls = allocated_prediction[..., 5:]
+    resp_cls = allocated_prediction[..., 5:]   # logits (B,S,S,C)
 
-    best_is_2 = iou2 > iou1  # (B,S,S) True => anchor2 es el responsable
-
-
-    nonresp_conf = torch.where(best_is_2, pred_conf1, pred_conf2) # (B,S,S)
-    iou_best = torch.where(best_is_2, iou2, iou1).detach()      # detach = target constante
-
+    best_is_2 = iou2 > iou1
+    nonresp_conf = torch.where(best_is_2, pred_conf1, pred_conf2)
+    iou_best = torch.where(best_is_2, iou2, iou1).detach()
 
     resp_xy = resp_box[..., 0:2]
     targ_xy = target_box[..., 0:2]
@@ -205,11 +175,19 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
 
     xy_loss = torch.sum(((resp_xy - targ_xy) ** 2)[obj_mask])
     wh_loss = torch.sum(((torch.sqrt(resp_wh) - torch.sqrt(targ_wh)) ** 2)[obj_mask])
-
-
-
     box_loss = lambda_coord * (xy_loss + wh_loss)
-    class_loss = torch.sum(((resp_cls - target_cls) ** 2)[obj_mask])
+
+    # ✅ CAMBIO ÚNICO: class_loss con BCE (con logits), solo en celdas con objeto
+    # resp_cls son logits; target_cls es one-hot float
+    if obj_mask.any():
+        class_loss = F.binary_cross_entropy_with_logits(
+            resp_cls[obj_mask],                 # [N,C]
+            target_cls[obj_mask].float(),       # [N,C]
+            reduction="sum"
+        )
+    else:
+        class_loss = resp_cls.sum() * 0.0
+    class_loss = lambda_cls * class_loss
 
     noobj_loss = lambda_noobj * (
         torch.sum((pred_conf1[noobj_mask]) ** 2) +
@@ -220,5 +198,3 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
     obj_loss = torch.sum((resp_conf[obj_mask] - iou_best[obj_mask]) ** 2)
 
     return box_loss + obj_loss + noobj_loss + class_loss
-
-

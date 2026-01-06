@@ -1,4 +1,5 @@
 from torch import nn
+import torch
 from utils.MACROS import *
 import torch.nn as nn
 from utils.ConvBlock import ConvBlock
@@ -40,7 +41,19 @@ class YOLOV1Head(nn.Module):
         self.detector = nn.Conv2d(256, num_anchors * (5 + num_classes), kernel_size=1)
 
     def forward(self, x):
-        return self.detector(x).permute(0, 2, 3, 1).contiguous()
+        initial_pred = self.detector(x).permute(0, 2, 3, 1).contiguous() # [BS, 7,7,170]
+        initial_pred1, initial_pred2 = initial_pred[...,0:(5+self.num_classes)], initial_pred[...,(5+self.num_classes):]
+
+        # activaciones de anchor 1
+        initial_pred1[...,0:2] = initial_pred1[...,0:2].sigmoid()
+        initial_pred1[...,4:5] = initial_pred1[...,4:5].sigmoid()
+
+        # activaciones de anchor 2
+        initial_pred2[...,0:2] = initial_pred2[...,0:2].sigmoid()
+        initial_pred2[...,4:5] = initial_pred2[...,4:5].sigmoid()
+
+        final_pred = torch.cat((initial_pred1, initial_pred2), dim=-1)
+        return final_pred
 
 class YOLOv1(nn.Module):
     def __init__(self):

@@ -78,7 +78,7 @@ if __name__ == "__main__":
             predictions = model(images)
 
             # Loss calculation
-            loss = criterion(predictions, targets)
+            loss = criterion(predictions, targets, num_classes=NUM_CLASSES)
             
             # Backpropagation
             optimizer.zero_grad()
@@ -100,7 +100,7 @@ if __name__ == "__main__":
 
                 predictions = model(images)
 
-                loss = criterion(predictions, targets)
+                loss = criterion(predictions, targets, num_classes=NUM_CLASSES)
 
                 val_loss+=loss.item()
 

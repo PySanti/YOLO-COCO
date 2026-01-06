@@ -67,14 +67,9 @@ def encode_yolov1(
 
 
         # Índice de la celda donde cae el centro
-        i = int(x_c / cell_w)  # columna (eje x)
-        j = int(y_c / cell_h)  # fila (eje y)
+        i = min(S-1, max(0, int(x_c/cell_w))) # con esto logramos que si i o j son iguales a S, caigan en la celda S-1
+        j = min(S-1, max(0, int(y_c/cell_h)))
 
-        if i < 0 or i >= S or j < 0 or j >= S:
-            ignored +=1
-            continue
-
-        # Coordenadas relativas a la celda (entre 0 y 1)
         x_cell = x_c / cell_w
         y_cell = y_c / cell_h
         tx = x_cell - i
