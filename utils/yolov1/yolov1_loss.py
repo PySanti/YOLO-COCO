@@ -147,8 +147,6 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
     p1 = predictions[..., 0:stride]
     p2 = predictions[..., stride:2 * stride]
 
-    pred_conf1 = p1[..., 4]
-    pred_conf2 = p2[..., 4]
 
     target_box = targets[..., 0:4]
     target_conf = targets[..., 4]
@@ -164,6 +162,9 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
     resp_cls = allocated_prediction[..., 5:]   # logits (B,S,S,C)
 
     best_is_2 = iou2 > iou1
+
+    pred_conf1 = p1[..., 4]
+    pred_conf2 = p2[..., 4]
     nonresp_conf = torch.where(best_is_2, pred_conf1, pred_conf2)
     iou_best = torch.where(best_is_2, iou2, iou1).detach()
 
@@ -177,16 +178,9 @@ def yolov1_loss(predictions, targets, num_classes, lambda_coord=5, lambda_noobj=
     wh_loss = torch.sum(((torch.sqrt(resp_wh) - torch.sqrt(targ_wh)) ** 2)[obj_mask])
     box_loss = lambda_coord * (xy_loss + wh_loss)
 
-    # ✅ CAMBIO ÚNICO: class_loss con BCE (con logits), solo en celdas con objeto
-    # resp_cls son logits; target_cls es one-hot float
-    if obj_mask.any():
-        class_loss = F.binary_cross_entropy_with_logits(
-            resp_cls[obj_mask],                 # [N,C]
-            target_cls[obj_mask].float(),       # [N,C]
-            reduction="sum"
-        )
-    else:
-        class_loss = resp_cls.sum() * 0.0
+    logits = resp_cls[obj_mask]                    # [N,C] logits
+    tgt_id = target_cls[obj_mask].argmax(dim=-1)   # [N]
+    class_loss = F.cross_entropy(logits, tgt_id, reduction="sum")
     class_loss = lambda_cls * class_loss
 
     noobj_loss = lambda_noobj * (

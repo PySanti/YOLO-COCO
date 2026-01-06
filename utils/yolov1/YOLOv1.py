@@ -5,6 +5,7 @@ import torch.nn as nn
 from utils.ConvBlock import ConvBlock
 from utils.SEBlock import SEBlock
 from utils.ResBlock import ResBlock
+import torch.nn.functional as F
 
 
 class YOLOV1Backbone(nn.Module):
@@ -40,20 +41,25 @@ class YOLOV1Head(nn.Module):
         self.num_anchors = num_anchors
         self.detector = nn.Conv2d(256, num_anchors * (5 + num_classes), kernel_size=1)
 
-    def forward(self, x):
-        initial_pred = self.detector(x).permute(0, 2, 3, 1).contiguous() # [BS, 7,7,170]
-        initial_pred1, initial_pred2 = initial_pred[...,0:(5+self.num_classes)], initial_pred[...,(5+self.num_classes):]
-
-        # activaciones de anchor 1
-        initial_pred1[...,0:2] = initial_pred1[...,0:2].sigmoid()
-        initial_pred1[...,4:5] = initial_pred1[...,4:5].sigmoid()
-
-        # activaciones de anchor 2
-        initial_pred2[...,0:2] = initial_pred2[...,0:2].sigmoid()
-        initial_pred2[...,4:5] = initial_pred2[...,4:5].sigmoid()
-
-        final_pred = torch.cat((initial_pred1, initial_pred2), dim=-1)
+    def _activate_output(self, out):
+        anchors = []
+        for a in range(self.num_anchors):
+            ll = a*(5+self.num_classes)
+            rl = (a+1)*(5+self.num_classes)
+            current_anchor = out[...,ll:rl]
+            current_anchor[...,0:2] = current_anchor[...,0:2].sigmoid()
+            current_anchor[...,2:4] = F.softplus(current_anchor[...,2:4].clone())
+            current_anchor[...,4:5] = current_anchor[...,4:5].sigmoid()
+            anchors.append(current_anchor)
+        final_pred = torch.cat(anchors, dim=-1)
         return final_pred
+
+
+
+
+    def forward(self, x):
+        out = self.detector(x).permute(0, 2, 3, 1).contiguous() # [BS, 7,7,170]
+        return self._activate_output(out)
 
 class YOLOv1(nn.Module):
     def __init__(self):

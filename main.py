@@ -40,7 +40,7 @@ if __name__ == "__main__":
             dataset=train_dataset, 
             batch_size=BATCH_SIZE,
             shuffle=True,
-            num_workers=10,
+            num_workers=12,
             pin_memory=True,
             persistent_workers=True
     )
@@ -57,7 +57,6 @@ if __name__ == "__main__":
     model = YOLOv1().to(DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=0.0001,weight_decay=0.0005)
     criterion = yolov1_loss
-
 
     print("Empezando entrenamiento")
     num_epochs = 20

@@ -5,7 +5,7 @@ from os import listdir
 from os import path
 import matplotlib.pyplot as plt
 import numpy as np
-from utils.MACROS import ANNOTATIONS_REQUIRED, TRAIN_ANN_FILE
+from utils.MACROS import ANNOTATIONS_REQUIRED, GRID_SIZE, NUM_CLASSES, TRAIN_ANN_FILE
 import os
 import numpy as np
 import torch
@@ -174,28 +174,85 @@ def load_images_paths(folder : str):
 def warning(string):
     print(Fore.YELLOW + string + Fore.RESET)
 
-def deencode_yolo_target(target):
-    """
-        Toma un tensor que representa una prediccion o un target
-        y lo convierte en una lista de annotations.
-    """
-    annotations = []
-    new_annotation = None
+import torch
+import torch.nn.functional as F
 
-    target_boxes = target[..., 0:4]
-    target_conf = target[..., 4]
-    target_clases = target[..., 5:]
-    obj_mask = target_conf > 0
+def deencode_yolo(pred: torch.Tensor):
+    """
+    Decodifica un tensor YOLO por celda a una lista de diccionarios.
 
-    for a,row in enumerate(obj_mask):
-        for b, column in enumerate(row):
-            if obj_mask[a][b]:
-                new_annotation = {
-                        "category_id" : list(target_clases[a][b]).index(max(target_clases[a][b])),
-                        "bbox" : [float(a) for a in list(target_boxes[a][b])],
-                        }
-                annotations.append(new_annotation)
-    return annotations
+    Espera un SOLO "anchor" por celda:
+      pred shape: [S, S, 5 + C]
+        pred[..., 0:4] = [tx, ty, tw, th]
+          - tx, ty: offset del centro dentro de la celda (0..1 típico)
+          - tw, th: ancho/alto normalizados a la imagen (0..1)
+        pred[..., 4]   = conf
+        pred[..., 5:]  = scores de clase (logits o probs)
+
+    Retorna una lista de dicts (sin umbrales ni NMS):
+      {
+        "bbox": [x_center, y_center, w, h]  (TODO normalizado 0..1, en coords de imagen)
+        "conf": float,
+        "class_id": int
+      }
+    """
+    if pred.ndim != 3:
+        raise ValueError(f"pred debe ser 3D [S,S,5+C], llegó shape={tuple(pred.shape)}")
+
+    S, S2, D = pred.shape
+    if S != GRID_SIZE or S2 != GRID_SIZE:
+        raise ValueError(f"grid_size mismatch: esperado {GRID_SIZE}x{GRID_SIZE}, llegó {S}x{S2}")
+
+    C = NUM_CLASSES
+    if D != 5 + C:
+        raise ValueError(f"last_dim mismatch: esperado {5+C}, llegó {D}")
+
+    device = pred.device
+    eps = 1e-9
+
+    # split
+    tx_ty = pred[..., 0:2]                    # [S,S,2]
+    tw_th = pred[..., 2:4].clamp_min(eps)     # [S,S,2]
+    conf  = pred[..., 4]                      # [S,S]
+    cls   = pred[..., 5:5+C]                  # [S,S,C]
+
+    class_id = cls.argmax(dim=-1)        # [S,S]
+    class_prob = cls.gather(-1, class_id.unsqueeze(-1)).squeeze(-1)  # [S,S]
+
+    # score combinado (sin umbral, solo para reportar)
+    # si prefieres reportar conf "puro", cambia a conf.item()
+    combined_conf = (conf * class_prob).clamp(0.0, 1.0)
+
+    # grid indices -> centros absolutos normalizados
+    jj, ii = torch.meshgrid(
+        torch.arange(S, device=device),
+        torch.arange(S, device=device),
+        indexing="ij"
+    )
+    ii = ii.float()
+    jj = jj.float()
+
+    x_center = (ii + tx_ty[..., 0]) / S
+    y_center = (jj + tx_ty[..., 1]) / S
+    w = tw_th[..., 0]
+    h = tw_th[..., 1]
+
+    # construir lista de dicts, uno por celda (sin filtrar)
+    out= []
+    for j in range(S):
+        for i in range(S):
+            out.append({
+                "bbox": [
+                    float(x_center[j, i].item()),
+                    float(y_center[j, i].item()),
+                    float(w[j, i].item()),
+                    float(h[j, i].item()),
+                ],
+                "conf": float(combined_conf[j, i].item()),
+                "class_id": int(class_id[j, i].item()),
+            })
+
+    return out
 
 
 
